@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ## 21/07 — terça-feira ~ 6 horas
 
 - **definição do projeto:** modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de componentes metálicos: desenvolvimento de ferramenta independente e plugin nativo para o ecossistema mach3. o projeto será desenvolvido em duas frentes tecnológicas complementares para otimizar ferramentas de trabalho em manufatura aditiva / impressão 3D.
@@ -21,3 +22,7 @@ o projeto é destinado diretamente aos alunos, pesquisadores e educadores de uni
 
 ## 27/07 — segunda-feira ~ 6 horas
 	
+=======
+# g-code-tools
+modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de componentes metálicos: desenvolvimento de ferramenta independente e plugin nativo para o ecossistema mach3.
+>>>>>>> c9b6ed1a5aefc30aa9da791961a2af09360b121f
