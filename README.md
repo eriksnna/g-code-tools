@@ -25,5 +25,28 @@ o projeto é destinado diretamente aos alunos, pesquisadores e educadores de uni
 - escolha das ferramentas da parte 1:
 	- **para o aplicativo independente (parte 1):** desenvolvimento estruturado em Python, aproveitando a alta eficiência da linguagem para o processamento e parsing de arquivos de texto (G-Code). A interface gráfica de usuário (GUI) e o motor de renderização 3D serão construídos utilizando frameworks robustos do ecossistema Python (como PyQt/PySide para a estruturação nativa das janelas, operando em conjunto com PyOpenGL ou bibliotecas de visualização espacial para a renderização fluida das trajetórias de corte).
 
-### 27/07 — segunda-feira ~ 6 horas
+### 27/07 — segunda-feira ~ 8 horas
+
+- Teste prático com numpy. **(Sem Parser)**
+
+### 1/08 — sábado / 2/08 — domingo ~ 17 horas
+
+1. Removido o `plot_mock_gcode` e a geração com NumPy da espiral.
+
+2. Adicionado GCodeParser, que:
+    - remove comentários (; e ( ... )) e normaliza a linha;
+    - extrai pares letra + número (X10.5, G1, F300);
+    - mantém o estado modal: modo de movimento (G0/G1/G2/G3), coordenadas absolutas ou incrementais (G90/G91) e unidades (G20 polegadas / G21 mm);
+    - converte arcos G2/G3 (centro dado por I/J, plano XY) em pequenos segmentos;
+    - separa os movimentos em cortes (G1/G2/G3) e rápidos (G0).
+
+3. Botão agora abre um diálogo para escolher o arquivo.
+
+4. Duas linhas na cena: vermelha translúcida para rápidos, azul para cortes. O modo "lines" desenha cada segmento separadamente.
+
+5. Câmera centralizada no centro da bounding box da peça, com distância proporcional ao tamanho.
+
+6. Limpeza dos itens anteriores antes de cada novo carregamento.
+
+7. Status na tela com a contagem de segmentos e de avisos de parsing.
 	
