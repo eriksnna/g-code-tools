@@ -4,6 +4,17 @@
 
 Modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de componentes metálicos: desenvolvimento de ferramenta independente e plugin nativo para o ecossistema mach3.
 
+### Instalação e uso
+
+`git clone https://github.com/eriksnna/g-code-tools`
+`cd g-code-tools`
+
+`pip install -r requirements.txt`
+
+Rode o main.py, insira um arquivo G-Code (ou insira o ``cubo-sample.nc``).
+
+![Funcionamento do App demonstrando o trajeto do cubo.](assets/sample.png)
+
 ### 21/07 — terça-feira ~ 6 horas
 
 - **definição do projeto:** modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de componentes metálicos: desenvolvimento de ferramenta independente e plugin nativo para o ecossistema mach3. o projeto será desenvolvido em duas frentes tecnológicas complementares para otimizar ferramentas de trabalho em manufatura aditiva / impressão 3D.
@@ -49,4 +60,34 @@ o projeto é destinado diretamente aos alunos, pesquisadores e educadores de uni
 6. Limpeza dos itens anteriores antes de cada novo carregamento.
 
 7. Status na tela com a contagem de segmentos e de avisos de parsing.
+
+### 6/08 — quinta-feira ~ 2 horas
+
+- reunião com cliente | definição de objetivos futuros:
+	- Trajeto animado
+	- Melhoria na interface
+
+
+### 13/08 — quinta-feira / 14/08, 15/08, 16/08 — domingo ~ 27 horas
+
+1. Atualização no `GCodeParser`. Antes separava cortes e rápidos em duas listas, fazendo com que a ordem se perdesse no processo. Agora guarda uma única lista `moves`, na sequência do arquivo, com a flag `is_cut`.
+
+2. **Animação por cor, não por redesenho.** Em vez de recriar as linhas a cada quadro, o programa desenha o caminho inteiro uma vez, com uma cor por vértice. Os movimentos já executados ficam brilhantes e os restantes ficam apagados. Cada quadro só troca o array de cores, o que mantém a animação fluida mesmo em arquivos grandes. A esfera amarela marca a posição atual da ferramenta.
+
+3. **Controles de mídia.**
+
+- ⏮ e ⏭: vão ao início e ao fim.
+- ⏪ e ⏩: retrocedem e avançam 2% do arquivo por clique.
+- ▶ / ⏸: reproduzem ou pausam. Ao chegar ao fim, o próximo clique recomeça do zero.
+- Timeline: arrastar a barra pausa a reprodução e posiciona o trajeto.
+- Velocidade: 0.5x, 1.0x, 1.5x e 2.0x, aplicados em tempo real.
+
+4. **Tempo de reprodução.** A duração a 1.0x é adaptativa: um arquivo com muitos movimentos é reproduzido em cerca de 15 segundos, e um arquivo pequeno usa uma taxa mínima para não ficar lento demais. Isso está em `BASE_DURATION_S` e `MIN_RATE`, caso você queira ajustar.
+
+5. **Interface.** Tema escuro, barra de reprodução destacada, cabeçalho com o nome do arquivo e linha de status com progresso e velocidade atual.
+
+	Limitações
+
+- Todas as linhas usam a mesma espessura. O `GLLinePlotItem` aceita apenas uma largura por item, então os rápidos não aparecem mais finos que os cortes.
+- O modo de animação anda por movimentos, não por tempo real de máquina. Um movimento longo e um curto levam o mesmo tempo visual. Se precisar de tempo proporcional à distância ou à velocidade de avanço (`F`), é possível calcular isso no parser com um tempo acumulado por movimento.
 	

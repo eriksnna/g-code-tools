@@ -1,13 +1,15 @@
 import sys
 import math
 import re
-from dataclasses import dataclass, field # (não utilizado diretamente)
 
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import ( 
-    QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QFileDialog, QLabel,
+    QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
+    QPushButton, QFileDialog, QLabel, QSlider, QComboBox, QFrame,
 )
 
 # ----------------
@@ -45,8 +47,8 @@ class GCodeParser:
         self.absolute = True     # G90 = absoluto, G91 = incremental
         self.scale = 1.0         # 1.0 = mm, 25.4 = polegadas (G20)
         self.motion = 0          # modo modal: G0, G1, G2 ou G3
-        self.cutting = []        # segmentos de corte (G1/G2/G3)
-        self.rapid = []          # segmentos de avanço rápido (G0)
+        # cada movimento: (ponto_inicial, ponto_final, é_corte), na ordem do arquivo
+        self.moves = []
         self.warnings = []
 
     def parse(self, text):
@@ -105,8 +107,7 @@ class GCodeParser:
         start = (self.x, self.y, self.z)
         end = (nx, ny, nz)
         if start != end:
-            target = self.cutting if self.motion == 1 else self.rapid
-            target.append((start, end))
+            self.moves.append((start, end, self.motion != 0))
         self.x, self.y, self.z = end
 
     def _arc(self, nx, ny, nz, words, clockwise):
@@ -145,35 +146,164 @@ class GCodeParser:
 
         self.x, self.y, self.z = nx, ny, nz
 
+# ---------
+# estilo
+# ---------
+
+DARK_QSS = """
+QMainWindow { background: #16181d; }
+QWidget#central { background: #16181d; }
+QLabel { color: #e6e6e6; background: transparent; font-size: 13px; }
+QLabel#fileLabel { color: #8b94a5; }
+QLabel#status { color: #9aa3b2; font-family: Consolas, monospace; font-size: 12px; }
+QPushButton {
+    background: #2a2e38; color: #e6e6e6;
+    border: 1px solid #3a3f4b; border-radius: 6px; padding: 6px 12px;
+}
+QPushButton:hover { background: #343945; }
+QPushButton:pressed { background: #1f222a; }
+QPushButton#play { background: #2b6cb0; border: 1px solid #3b82d0; font-size: 16px; }
+QPushButton#play:hover { background: #3478c4; }
+QFrame#playbar {
+    background: #1f222a; border: 1px solid #2c303b; border-radius: 10px;
+}
+QComboBox {
+    background: #2a2e38; color: #e6e6e6;
+    border: 1px solid #3a3f4b; border-radius: 6px; padding: 4px 8px; min-width: 70px;
+}
+QComboBox QAbstractItemView {
+    background: #2a2e38; color: #e6e6e6; selection-background-color: #3b82d0;
+}
+QSlider::groove:horizontal { height: 6px; background: #343945; border-radius: 3px; }
+QSlider::sub-page:horizontal { background: #3b82d0; border-radius: 3px; }
+QSlider::handle:horizontal {
+    background: #e6e6e6; width: 14px; margin: -5px 0; border-radius: 7px;
+}
+"""
+
+DIM_CUT = (0.2, 0.5, 0.7, 0.35)
+BRIGHT_CUT = (0.2, 0.8, 1.0, 1.0)
+DIM_RAPID = (1.0, 0.35, 0.35, 0.2)
+BRIGHT_RAPID = (1.0, 0.35, 0.35, 0.8)
+HEAD_COLOR = (1.0, 0.85, 0.2, 1.0)
+
+# ----------
+# interface
+# ----------
+
 class GCodeVisualizerApp(QMainWindow):
+
+    BASE_DURATION_S = 15.0   # tempo aproximado para reproduzir o arquivo a 1.0x
+    MIN_RATE = 20.0          # segmentos por segundo, mínimo a 1.0x
+    TICK_MS = 30
+    SPEEDS = [0.5, 1.0, 1.5, 2.0]
+    
     def __init__(self):
         super().__init__()
         self.setWindowTitle("visualizador de G-Code 3D")
-        self.resize(1024, 768)
+        self.setWindowIcon(QIcon("assets/g-code.ico"))
+        self.resize(1100, 800)
+        self.setStyleSheet(DARK_QSS)
 
+        self.total = 0           # número de movimentos
+        self.position = 0.0      # progresso em movimentos (float)
+        self.path_item = None
+        self.head = None
+        self.seg_pts = None
+        self.dim_colors = None
+        self.bright_colors = None
+
+        self._build_ui()
+
+        self.timer = QTimer(self)
+        self.timer.setInterval(self.TICK_MS)
+        self.timer.timeout.connect(self._tick)
+
+        self._set_controls_enabled(False)
+
+    def _build_ui(self):
         central = QWidget()
+        central.setObjectName("central")
         self.setCentralWidget(central)
-        layout = QVBoxLayout(central)
+        root = QVBoxLayout(central)
+        root.setContentsMargins(12, 12, 12, 12)
+        root.setSpacing(10)
 
-        # widget 3D (OpenGL)
+        # cabeçalho
+        header = QHBoxLayout()
+        self.btn_open = QPushButton("Abrir G-code...")
+        self.btn_open.clicked.connect(self.open_gcode)
+        self.file_label = QLabel("Nenhum arquivo carregado")
+        self.file_label.setObjectName("fileLabel")
+        header.addWidget(self.btn_open)
+        header.addWidget(self.file_label, 1)
+        root.addLayout(header)
+
+        # viewport 3D
         self.view = gl.GLViewWidget()
         self.view.setCameraPosition(distance=200)
-        layout.addWidget(self.view)
+        self.view.setBackgroundColor("#16181d")
+        root.addWidget(self.view, 1)
 
-        # grade de referência
-        grid = gl.GLGridItem()
+        grid = gl.GLGridItem(color=(70, 75, 85, 255))
         grid.scale(10, 10, 1)
         self.view.addItem(grid)
 
-        self.path_items = []
+        # barra de reprodução
+        bar = QFrame()
+        bar.setObjectName("playbar")
+        bar_layout = QVBoxLayout(bar)
+        bar_layout.setContentsMargins(14, 10, 14, 10)
+        bar_layout.setSpacing(8)
 
-        self.status = QLabel("nenhum arquivo carregado.")
-        layout.addWidget(self.status)
+        self.timeline = QSlider(Qt.Orientation.Horizontal)
+        self.timeline.setRange(0, 0)
+        self.timeline.valueChanged.connect(self._on_timeline)
+        self.timeline.sliderPressed.connect(self._pause)
+        bar_layout.addWidget(self.timeline)
 
-        self.btn_load = QPushButton("abrir arquivo G-code...")
-        self.btn_load.clicked.connect(self.open_gcode)
-        layout.addWidget(self.btn_load)
+        controls = QHBoxLayout()
+        controls.setSpacing(8)
+        self.btn_start = self._make_btn("⏮", "Ir para o início", self.go_start)
+        self.btn_rewind = self._make_btn("⏪", "Retroceder", lambda: self.step(-1))
+        self.btn_play = self._make_btn("▶", "Reproduzir / pausar (Play)", self.toggle_play)
+        self.btn_play.setObjectName("play")
+        self.btn_play.setFixedSize(56, 36)
+        self.btn_forward = self._make_btn("⏩", "Avançar", lambda: self.step(1))
+        self.btn_end = self._make_btn("⏭", "Ir para o fim", self.go_end)
 
+        controls.addStretch()
+        for btn in (self.btn_start, self.btn_rewind, self.btn_play,
+                    self.btn_forward, self.btn_end):
+            controls.addWidget(btn)
+        controls.addStretch()
+
+        controls.addWidget(QLabel("Velocidade"))
+        self.speed = QComboBox()
+        for s in self.SPEEDS:
+            self.speed.addItem(f"{s:.1f}x", s)
+        self.speed.setCurrentIndex(self.SPEEDS.index(1.0))
+        self.speed.currentIndexChanged.connect(self._refresh_status)
+        controls.addWidget(self.speed)
+        bar_layout.addLayout(controls)
+
+        self.status = QLabel("")
+        self.status.setObjectName("status")
+        bar_layout.addWidget(self.status)
+
+        root.addWidget(bar)
+
+    def _make_btn(self, text, tip, slot):
+        btn = QPushButton(text)
+        btn.setToolTip(tip)
+        btn.setFixedSize(44, 36)
+        btn.clicked.connect(slot)
+        return btn
+
+    def _set_controls_enabled(self, enabled):
+        for w in (self.btn_start, self.btn_rewind, self.btn_play,
+                  self.btn_forward, self.btn_end, self.timeline, self.speed):
+            w.setEnabled(enabled)        
 
     def open_gcode(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -193,53 +323,155 @@ class GCodeVisualizerApp(QMainWindow):
             return
 
         parser = GCodeParser().parse(text)
-        self.draw_toolpath(parser, path)
+        self.load_moves(parser, path)
 
-    def clear_path(self):
-        for item in self.path_items:
-            self.view.removeItem(item)
-        self.path_items.clear()
+    def load_moves(self, parser, path):
+        self._pause()
+        self._clear_path()
 
-    def draw_toolpath(self, parser, path):
-        self.clear_path()
-        
-        all_segments = parser.cutting + parser.rapid
-        if not all_segments:
-            self.status.setText("nenhum movimento encontrado no arquivo.")
+        if not parser.moves:
+            self.file_label.setText(path)
+            self._set_controls_enabled(False)
+            self.status.setText("Nenhum movimento encontrado no arquivo.")
             return
-        
-        # rápidos em vermelho translúcido, cortes em azul
-        if parser.rapid:
-            self._add_lines(parser.rapid, color=(1.0, 0.35, 0.35, 0.6), width=1)
-        if parser.cutting:
-            self._add_lines(parser.cutting, color=(0.2, 0.8, 1.0, 1.0), width=2)
-        
-        # centraliza a câmera na peça
-        pts = segments_to_array(all_segments)
-        lo, hi = pts.min(axis=0), pts.max(axis=0)
+
+        self.total = len(parser.moves)
+        self.position = 0.0
+
+        # dois pontos por movimento; GLLinePlotItem em modo "lines" pareia os pontos
+        self.seg_pts = np.array(
+            [p for a, b, _ in parser.moves for p in (a, b)], dtype=float
+        )
+        is_cut = np.repeat(np.array([c for *_, c in parser.moves], dtype=bool), 2)
+        self.dim_colors = np.where(is_cut[:, None], DIM_CUT, DIM_RAPID).astype(float)
+        self.bright_colors = np.where(is_cut[:, None], BRIGHT_CUT, BRIGHT_RAPID).astype(float)
+
+        self.path_item = gl.GLLinePlotItem(
+            pos=self.seg_pts,
+            color=self.dim_colors,
+            width=2,
+            antialias=True,
+            mode="lines",
+        )
+        self.view.addItem(self.path_item)
+
+        self.head = gl.GLScatterPlotItem(
+            pos=self.seg_pts[:1],
+            size=12,
+            color=HEAD_COLOR,
+        )
+        self.view.addItem(self.head)
+
+        self._fit_camera()
+
+        self.timeline.blockSignals(True)
+        self.timeline.setRange(0, self.total)
+        self.timeline.blockSignals(False)
+
+        self.file_label.setText(path)
+        self._set_controls_enabled(True)
+        self._seek(0)
+
+    def _clear_path(self):
+        for item in (self.path_item, self.head):
+            if item is not None:
+                self.view.removeItem(item)
+        self.path_item = None
+        self.head = None
+
+    def _fit_camera(self):
+        lo, hi = self.seg_pts.min(axis=0), self.seg_pts.max(axis=0)
         center = (lo + hi) / 2
         size = float(np.linalg.norm(hi - lo))
         self.view.opts["center"] = pg.Vector(*center)
         self.view.setCameraPosition(distance=max(size * 1.5, 50))
-        
-        msg = (
-            f"{path}: {len(parser.cutting)} segmentos de corte, "
-            f"{len(parser.rapid)} de avanço rápido"
-        )
-        if parser.warnings:
-            msg += f" | {len(parser.warnings)} aviso(s), ex.: {parser.warnings[0]}"
-        self.status.setText(msg)
 
-    def _add_lines(self, segments, color, width):
-        item = gl.GLLinePlotItem(
-            pos=segments_to_array(segments),
-            color=color,
-            width=width,
-            antialias=True,
-            mode="lines",  # cada par de pontos vira um segmento independente
+    # --- reprodução -------------------------------------------------------
+
+    def _rate(self):
+        """Movimentos por segundo a 1.0x, ajustado ao tamanho do arquivo."""
+        return max(self.MIN_RATE, self.total / self.BASE_DURATION_S)
+
+    def _speed(self):
+        return self.speed.currentData()
+
+    def toggle_play(self):
+        if self.total == 0:
+            return
+        if self.timer.isActive():
+            self._pause()
+            return
+        if self.position >= self.total:
+            self._seek(0)
+        self.timer.start()
+        self.btn_play.setText("⏸")
+
+    def _pause(self):
+        self.timer.stop()
+        self.btn_play.setText("▶")
+
+    def _tick(self):
+        dt = self.TICK_MS / 1000.0
+        self.position += self._speed() * self._rate() * dt
+        if self.position >= self.total:
+            self._seek(self.total)
+            self._pause()
+            return
+        self._seek(self.position)
+
+    def step(self, direction):
+        """Avança ou retrocede 2% do arquivo (mínimo de 1 movimento)."""
+        if self.total == 0:
+            return
+        self._pause()
+        n = max(1, self.total // 50)
+        self._seek(self.position + direction * n)
+
+    def go_start(self):
+        self._pause()
+        self._seek(0)
+
+    def go_end(self):
+        self._pause()
+        self._seek(self.total)
+
+    def _on_timeline(self, value):
+        # chamado quando o usuário arrasta a timeline
+        if self.total and int(self.position) != value:
+            self._seek(value)
+
+    def _seek(self, value):
+        if self.total == 0:
+            return
+        self.position = min(max(0.0, float(value)), float(self.total))
+        n = int(self.position)
+
+        self.timeline.blockSignals(True)
+        self.timeline.setValue(n)
+        self.timeline.blockSignals(False)
+
+        self._render(n)
+
+    def _render(self, n):
+        colors = self.dim_colors.copy()
+        colors[: 2 * n] = self.bright_colors[: 2 * n]
+        self.path_item.setData(color=colors)
+
+        # ponto da cabeça: fim do último movimento executado
+        head_idx = max(0, 2 * n - 1)
+        self.head.setData(pos=self.seg_pts[head_idx].reshape(1, 3))
+
+        self._refresh_status()
+
+    def _refresh_status(self):
+        if self.total == 0:
+            return
+        n = int(self.position)
+        pct = 100.0 * n / self.total
+        self.status.setText(
+            f"movimento {n}/{self.total}  ({pct:.0f}%)   |   "
+            f"velocidade {self._speed():.1f}x"
         )
-        self.view.addItem(item)
-        self.path_items.append(item)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
