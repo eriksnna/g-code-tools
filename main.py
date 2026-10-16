@@ -1,16 +1,31 @@
 import sys
 import math
 import re
+from dataclasses import dataclass
 
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import ( 
+from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
-    QPushButton, QFileDialog, QLabel, QSlider, QComboBox, QFrame,
+    QPushButton, QFileDialog, QLabel, QSlider, QFrame,
 )
+
+# -------------
+# Configuração
+# -------------
+
+RAPID_FEED = 5000.0      # mm/min usados nos G0 (ajuste para a sua máquina)
+DEFAULT_FEED = 300.0     # mm/min, usado se o arquivo não definir F antes do corte
+CUT_WIDTH = 2.0          # espessura das linhas de corte
+RAPID_WIDTH = 1.0        # espessura das linhas de avanço rápido
+
+SPEED_MIN, SPEED_MAX = 0.1, 10.0
+PRESETS = [0.5, 1.0, 1.5, 2.0, 4.0]
+STEP_FRACTION = 0.05     # botões ⏪ ⏩ avançam/recuam 5% do tempo total
+TIMELINE_STEPS = 1000    # resolução da timeline
 
 # ----------------
 # parser de G-code
@@ -30,24 +45,18 @@ def parse_words(line):
     return {letter: float(value) for letter, value in WORD_RE.findall(line)}
 
 
-def segments_to_array(segments):
-    """lista de pares (ponto_a, ponto_b) -> array Nx3 para o GLLinePlotItem."""
-    if not segments:
-        return np.empty((0, 3))
-    return np.array([p for seg in segments for p in seg], dtype=float)
-
-
 class GCodeParser:
-    """interpreta G-code e produz segmentos 3D."""
+    """Interpreta G-code e produz a lista ordenada de movimentos com duração."""
 
     ARC_STEP_DEG = 5.0  # resolução dos arcos: graus por segmento
 
     def __init__(self):
         self.x = self.y = self.z = 0.0
-        self.absolute = True     # G90 = absoluto, G91 = incremental
-        self.scale = 1.0         # 1.0 = mm, 25.4 = polegadas (G20)
-        self.motion = 0          # modo modal: G0, G1, G2 ou G3
-        # cada movimento: (ponto_inicial, ponto_final, é_corte), na ordem do arquivo
+        self.absolute = True          # G90 = absoluto, G91 = incremental
+        self.scale = 1.0              # 1.0 = mm, 25.4 = polegadas (G20)
+        self.motion = 0               # modo modal: G0, G1, G2 ou G3
+        self.feed = DEFAULT_FEED      # modo modal: avanço em mm/min
+        # cada movimento: (início, fim, é_corte, duração_em_segundos)
         self.moves = []
         self.warnings = []
 
@@ -67,7 +76,7 @@ class GCodeParser:
     def _parse_line(self, line):
         words = parse_words(line)
         if not words:
-            return  # linhas como '%', 'N10' sozinho, etc.
+            return
 
         if "G" in words:
             code = int(words["G"])
@@ -82,8 +91,12 @@ class GCodeParser:
             elif code == 91:
                 self.absolute = False
 
+        if "F" in words:
+            # F é em unidades/min; em G20 (polegadas) converte para mm/min
+            self.feed = words["F"] * self.scale
+
         if not any(axis in words for axis in "XYZ"):
-            return  # linha só de configuração ou M-codes
+            return
 
         nx = self._target("X", self.x, words)
         ny = self._target("Y", self.y, words)
@@ -101,13 +114,20 @@ class GCodeParser:
         value = words[axis] * self.scale
         return value if self.absolute else current + value
 
+    def _duration(self, length, is_cut):
+        """Tempo em segundos para percorrer 'length' mm na velocidade do movimento."""
+        feed = max(self.feed if is_cut else RAPID_FEED, 1.0)
+        return length / feed * 60.0
+
     # --- movimentos ---
 
     def _linear(self, nx, ny, nz):
         start = (self.x, self.y, self.z)
         end = (nx, ny, nz)
         if start != end:
-            self.moves.append((start, end, self.motion != 0))
+            is_cut = self.motion != 0
+            length = math.dist(start, end)
+            self.moves.append((start, end, is_cut, self._duration(length, is_cut)))
         self.x, self.y, self.z = end
 
     def _arc(self, nx, ny, nz, words, clockwise):
@@ -115,7 +135,6 @@ class GCodeParser:
         if "R" in words:
             raise ValueError("arco com R não suportado; use I/J")
 
-        # I e J são offsets relativos ao ponto inicial
         cx = self.x + words.get("I", 0.0) * self.scale
         cy = self.y + words.get("J", 0.0) * self.scale
         r = math.hypot(self.x - cx, self.y - cy)
@@ -123,7 +142,6 @@ class GCodeParser:
         a0 = math.atan2(self.y - cy, self.x - cx)
         a1 = math.atan2(ny - cy, nx - cx)
 
-        # ajusta o ângulo final para o sentido correto da rotação
         if clockwise and a1 >= a0:
             a1 -= 2 * math.pi
         elif not clockwise and a1 <= a0:
@@ -139,12 +157,14 @@ class GCodeParser:
             point = (
                 cx + r * math.cos(a),
                 cy + r * math.sin(a),
-                self.z + (nz - self.z) * t,  # Z interpolado linearmente (hélice)
+                self.z + (nz - self.z) * t,  # Z interpolado (hélice)
             )
-            self.cutting.append((prev, point))
+            length = math.dist(prev, point)
+            self.moves.append((prev, point, True, self._duration(length, True)))
             prev = point
 
         self.x, self.y, self.z = nx, ny, nz
+
 
 # ---------
 # estilo
@@ -162,23 +182,20 @@ QPushButton {
 }
 QPushButton:hover { background: #343945; }
 QPushButton:pressed { background: #1f222a; }
+QPushButton:disabled { color: #5a606d; }
 QPushButton#play { background: #2b6cb0; border: 1px solid #3b82d0; font-size: 16px; }
 QPushButton#play:hover { background: #3478c4; }
+QPushButton#preset { padding: 2px 4px; font-size: 12px; }
+QPushButton#preset:checked { background: #3b82d0; border: 1px solid #3b82d0; }
 QFrame#playbar {
     background: #1f222a; border: 1px solid #2c303b; border-radius: 10px;
-}
-QComboBox {
-    background: #2a2e38; color: #e6e6e6;
-    border: 1px solid #3a3f4b; border-radius: 6px; padding: 4px 8px; min-width: 70px;
-}
-QComboBox QAbstractItemView {
-    background: #2a2e38; color: #e6e6e6; selection-background-color: #3b82d0;
 }
 QSlider::groove:horizontal { height: 6px; background: #343945; border-radius: 3px; }
 QSlider::sub-page:horizontal { background: #3b82d0; border-radius: 3px; }
 QSlider::handle:horizontal {
     background: #e6e6e6; width: 14px; margin: -5px 0; border-radius: 7px;
 }
+QSlider:disabled::handle:horizontal { background: #5a606d; }
 """
 
 DIM_CUT = (0.2, 0.5, 0.7, 0.35)
@@ -187,31 +204,43 @@ DIM_RAPID = (1.0, 0.35, 0.35, 0.2)
 BRIGHT_RAPID = (1.0, 0.35, 0.35, 0.8)
 HEAD_COLOR = (1.0, 0.85, 0.2, 1.0)
 
+
+@dataclass
+class Layer:
+    """Um GLLinePlotItem com espessura própria, contendo parte dos movimentos."""
+    item: object
+    idx: np.ndarray     # índices globais dos movimentos desta camada, em ordem
+    base: np.ndarray    # cores apagadas, dois vértices por movimento
+    bright: np.ndarray  # cores acesas
+
+
+def _fmt(seconds):
+    m, s = divmod(int(round(seconds)), 60)
+    return f"{m:02d}:{s:02d}"
+
+
 # ----------
 # interface
 # ----------
 
 class GCodeVisualizerApp(QMainWindow):
 
-    BASE_DURATION_S = 15.0   # tempo aproximado para reproduzir o arquivo a 1.0x
-    MIN_RATE = 20.0          # segmentos por segundo, mínimo a 1.0x
     TICK_MS = 30
-    SPEEDS = [0.5, 1.0, 1.5, 2.0]
-    
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("visualizador de G-Code 3D")
-        self.setWindowIcon(QIcon("assets/g-code.ico"))
         self.resize(1100, 800)
+        self.setWindowIcon(QIcon("assets/g-code.ico"))
         self.setStyleSheet(DARK_QSS)
 
         self.total = 0           # número de movimentos
-        self.position = 0.0      # progresso em movimentos (float)
-        self.path_item = None
+        self.total_time = 0.0    # tempo total de máquina, em segundos
+        self.elapsed = 0.0       # tempo decorrido na simulação, em segundos
+        self.speed_value = 1.0
+        self.layers = []
         self.head = None
         self.seg_pts = None
-        self.dim_colors = None
-        self.bright_colors = None
 
         self._build_ui()
 
@@ -220,6 +249,8 @@ class GCodeVisualizerApp(QMainWindow):
         self.timer.timeout.connect(self._tick)
 
         self._set_controls_enabled(False)
+
+    # --- construção da interface ---
 
     def _build_ui(self):
         central = QWidget()
@@ -257,7 +288,7 @@ class GCodeVisualizerApp(QMainWindow):
         bar_layout.setSpacing(8)
 
         self.timeline = QSlider(Qt.Orientation.Horizontal)
-        self.timeline.setRange(0, 0)
+        self.timeline.setRange(0, TIMELINE_STEPS)
         self.timeline.valueChanged.connect(self._on_timeline)
         self.timeline.sliderPressed.connect(self._pause)
         bar_layout.addWidget(self.timeline)
@@ -266,7 +297,7 @@ class GCodeVisualizerApp(QMainWindow):
         controls.setSpacing(8)
         self.btn_start = self._make_btn("⏮", "Ir para o início", self.go_start)
         self.btn_rewind = self._make_btn("⏪", "Retroceder", lambda: self.step(-1))
-        self.btn_play = self._make_btn("▶", "Reproduzir / pausar (Play)", self.toggle_play)
+        self.btn_play = self._make_btn("▶", "Reproduzir / pausar", self.toggle_play)
         self.btn_play.setObjectName("play")
         self.btn_play.setFixedSize(56, 36)
         self.btn_forward = self._make_btn("⏩", "Avançar", lambda: self.step(1))
@@ -279,12 +310,26 @@ class GCodeVisualizerApp(QMainWindow):
         controls.addStretch()
 
         controls.addWidget(QLabel("Velocidade"))
-        self.speed = QComboBox()
-        for s in self.SPEEDS:
-            self.speed.addItem(f"{s:.1f}x", s)
-        self.speed.setCurrentIndex(self.SPEEDS.index(1.0))
-        self.speed.currentIndexChanged.connect(self._refresh_status)
-        controls.addWidget(self.speed)
+        self.speed_slider = QSlider(Qt.Orientation.Horizontal)
+        self.speed_slider.setRange(int(SPEED_MIN * 10), int(SPEED_MAX * 10))
+        self.speed_slider.setFixedWidth(160)
+        self.speed_slider.valueChanged.connect(self._on_speed_slider)
+        controls.addWidget(self.speed_slider)
+
+        self.speed_label = QLabel("")
+        self.speed_label.setFixedWidth(44)
+        controls.addWidget(self.speed_label)
+
+        self.preset_buttons = []
+        for p in PRESETS:
+            b = QPushButton(f"{p:g}x")
+            b.setObjectName("preset")
+            b.setCheckable(True)
+            b.setFixedSize(46, 26)
+            b.clicked.connect(lambda _=False, v=p: self._set_speed(v))
+            controls.addWidget(b)
+            self.preset_buttons.append(b)
+
         bar_layout.addLayout(controls)
 
         self.status = QLabel("")
@@ -292,6 +337,8 @@ class GCodeVisualizerApp(QMainWindow):
         bar_layout.addWidget(self.status)
 
         root.addWidget(bar)
+
+        self._set_speed(1.0)
 
     def _make_btn(self, text, tip, slot):
         btn = QPushButton(text)
@@ -301,16 +348,20 @@ class GCodeVisualizerApp(QMainWindow):
         return btn
 
     def _set_controls_enabled(self, enabled):
-        for w in (self.btn_start, self.btn_rewind, self.btn_play,
-                  self.btn_forward, self.btn_end, self.timeline, self.speed):
-            w.setEnabled(enabled)        
+        widgets = [self.btn_start, self.btn_rewind, self.btn_play,
+                   self.btn_forward, self.btn_end, self.timeline,
+                   self.speed_slider, *self.preset_buttons]
+        for w in widgets:
+            w.setEnabled(enabled)
+
+    # --- carregamento ---
 
     def open_gcode(self):
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "abrir G-code",
+            "Abrir G-code",
             "",
-            "g-code (*.nc *.gcode *.ngc *.tap);;Todos os arquivos (*)",
+            "G-code (*.nc *.gcode *.ngc *.tap);;Todos os arquivos (*)",
         )
         if not path:
             return
@@ -328,56 +379,66 @@ class GCodeVisualizerApp(QMainWindow):
     def load_moves(self, parser, path):
         self._pause()
         self._clear_path()
+        self.file_label.setText(path)
 
         if not parser.moves:
-            self.file_label.setText(path)
             self._set_controls_enabled(False)
             self.status.setText("Nenhum movimento encontrado no arquivo.")
             return
 
-        self.total = len(parser.moves)
-        self.position = 0.0
+        moves = parser.moves
+        self.total = len(moves)
+        self.starts = np.array([m[0] for m in moves], dtype=float)
+        self.ends = np.array([m[1] for m in moves], dtype=float)
+        is_cut = np.array([m[2] for m in moves], dtype=bool)
+        self.durs = np.array([m[3] for m in moves], dtype=float)
 
-        # dois pontos por movimento; GLLinePlotItem em modo "lines" pareia os pontos
-        self.seg_pts = np.array(
-            [p for a, b, _ in parser.moves for p in (a, b)], dtype=float
-        )
-        is_cut = np.repeat(np.array([c for *_, c in parser.moves], dtype=bool), 2)
-        self.dim_colors = np.where(is_cut[:, None], DIM_CUT, DIM_RAPID).astype(float)
-        self.bright_colors = np.where(is_cut[:, None], BRIGHT_CUT, BRIGHT_RAPID).astype(float)
+        # cum_start[i] é o instante em que o movimento i começa
+        self.cum_end = np.cumsum(self.durs)
+        self.cum_start = self.cum_end - self.durs
+        self.total_time = float(self.cum_end[-1])
+        self.elapsed = 0.0
 
-        self.path_item = gl.GLLinePlotItem(
-            pos=self.seg_pts,
-            color=self.dim_colors,
-            width=2,
-            antialias=True,
-            mode="lines",
-        )
-        self.view.addItem(self.path_item)
+        # todos os pontos, para o enquadramento da câmera
+        self.seg_pts = np.empty((2 * self.total, 3))
+        self.seg_pts[0::2] = self.starts
+        self.seg_pts[1::2] = self.ends
 
-        self.head = gl.GLScatterPlotItem(
-            pos=self.seg_pts[:1],
-            size=12,
-            color=HEAD_COLOR,
-        )
+        # uma camada por espessura: rápidos (finos) e cortes (grossos)
+        self.layers = []
+        all_idx = np.arange(self.total)
+        for mask, width, dim, bright in (
+            (~is_cut, RAPID_WIDTH, DIM_RAPID, BRIGHT_RAPID),
+            (is_cut, CUT_WIDTH, DIM_CUT, BRIGHT_CUT),
+        ):
+            idx = all_idx[mask]
+            if idx.size == 0:
+                continue
+            pts = np.empty((2 * idx.size, 3))
+            pts[0::2] = self.starts[idx]
+            pts[1::2] = self.ends[idx]
+            base = np.tile(np.array(dim, dtype=float), (pts.shape[0], 1))
+            bright_arr = np.tile(np.array(bright, dtype=float), (pts.shape[0], 1))
+            item = gl.GLLinePlotItem(
+                pos=pts, color=base, width=width, antialias=True, mode="lines",
+            )
+            self.view.addItem(item)
+            self.layers.append(Layer(item, idx, base, bright_arr))
+
+        self.head = gl.GLScatterPlotItem(pos=self.starts[:1], size=12, color=HEAD_COLOR)
         self.view.addItem(self.head)
 
         self._fit_camera()
-
-        self.timeline.blockSignals(True)
-        self.timeline.setRange(0, self.total)
-        self.timeline.blockSignals(False)
-
-        self.file_label.setText(path)
         self._set_controls_enabled(True)
-        self._seek(0)
+        self._seek(0.0)
 
     def _clear_path(self):
-        for item in (self.path_item, self.head):
-            if item is not None:
-                self.view.removeItem(item)
-        self.path_item = None
-        self.head = None
+        for layer in self.layers:
+            self.view.removeItem(layer.item)
+        self.layers = []
+        if self.head is not None:
+            self.view.removeItem(self.head)
+            self.head = None
 
     def _fit_camera(self):
         lo, hi = self.seg_pts.min(axis=0), self.seg_pts.max(axis=0)
@@ -386,14 +447,27 @@ class GCodeVisualizerApp(QMainWindow):
         self.view.opts["center"] = pg.Vector(*center)
         self.view.setCameraPosition(distance=max(size * 1.5, 50))
 
-    # --- reprodução -------------------------------------------------------
-
-    def _rate(self):
-        """Movimentos por segundo a 1.0x, ajustado ao tamanho do arquivo."""
-        return max(self.MIN_RATE, self.total / self.BASE_DURATION_S)
+    # --- velocidade ---
 
     def _speed(self):
-        return self.speed.currentData()
+        return self.speed_value
+
+    def _set_speed(self, value):
+        self.speed_value = min(max(round(value, 1), SPEED_MIN), SPEED_MAX)
+
+        self.speed_slider.blockSignals(True)
+        self.speed_slider.setValue(int(round(self.speed_value * 10)))
+        self.speed_slider.blockSignals(False)
+
+        self.speed_label.setText(f"{self.speed_value:.1f}x")
+        for b, p in zip(self.preset_buttons, PRESETS):
+            b.setChecked(abs(p - self.speed_value) < 1e-6)
+        self._refresh_status()
+
+    def _on_speed_slider(self, value):
+        self._set_speed(value / 10.0)
+
+    # --- reprodução ---
 
     def toggle_play(self):
         if self.total == 0:
@@ -401,8 +475,8 @@ class GCodeVisualizerApp(QMainWindow):
         if self.timer.isActive():
             self._pause()
             return
-        if self.position >= self.total:
-            self._seek(0)
+        if self.elapsed >= self.total_time:
+            self._seek(0.0)
         self.timer.start()
         self.btn_play.setText("⏸")
 
@@ -412,66 +486,77 @@ class GCodeVisualizerApp(QMainWindow):
 
     def _tick(self):
         dt = self.TICK_MS / 1000.0
-        self.position += self._speed() * self._rate() * dt
-        if self.position >= self.total:
-            self._seek(self.total)
+        t = self.elapsed + dt * self._speed()
+        if t >= self.total_time:
+            self._seek(self.total_time)
             self._pause()
             return
-        self._seek(self.position)
+        self._seek(t)
 
     def step(self, direction):
-        """Avança ou retrocede 2% do arquivo (mínimo de 1 movimento)."""
         if self.total == 0:
             return
         self._pause()
-        n = max(1, self.total // 50)
-        self._seek(self.position + direction * n)
+        self._seek(self.elapsed + direction * STEP_FRACTION * self.total_time)
 
     def go_start(self):
         self._pause()
-        self._seek(0)
+        self._seek(0.0)
 
     def go_end(self):
         self._pause()
-        self._seek(self.total)
+        self._seek(self.total_time)
 
     def _on_timeline(self, value):
-        # chamado quando o usuário arrasta a timeline
-        if self.total and int(self.position) != value:
-            self._seek(value)
+        # só dispara com interação do usuário (ajustes programáticos bloqueiam sinais)
+        if self.total:
+            self._seek(value / TIMELINE_STEPS * self.total_time)
 
-    def _seek(self, value):
+    def _seek(self, t):
         if self.total == 0:
             return
-        self.position = min(max(0.0, float(value)), float(self.total))
-        n = int(self.position)
+        self.elapsed = min(max(0.0, float(t)), self.total_time)
 
+        value = round(TIMELINE_STEPS * self.elapsed / self.total_time)
         self.timeline.blockSignals(True)
-        self.timeline.setValue(n)
+        self.timeline.setValue(value)
         self.timeline.blockSignals(False)
 
-        self._render(n)
+        self._render()
 
-    def _render(self, n):
-        colors = self.dim_colors.copy()
-        colors[: 2 * n] = self.bright_colors[: 2 * n]
-        self.path_item.setData(color=colors)
+    def _render(self):
+        t = self.elapsed
+        k = int(np.searchsorted(self.cum_end, t, side="right"))  # movimento em curso
 
-        # ponto da cabeça: fim do último movimento executado
-        head_idx = max(0, 2 * n - 1)
-        self.head.setData(pos=self.seg_pts[head_idx].reshape(1, 3))
+        if k >= self.total:
+            head = self.ends[-1]
+            upto = self.total
+        else:
+            # posição interpolada dentro do movimento em curso
+            f = (t - self.cum_start[k]) / self.durs[k]
+            head = self.starts[k] + f * (self.ends[k] - self.starts[k])
+            # o movimento em curso acende assim que começa
+            upto = k + 1 if t > self.cum_start[k] else k
 
+        for layer in self.layers:
+            done = int(np.searchsorted(layer.idx, upto, side="left"))
+            colors = layer.base.copy()
+            colors[: 2 * done] = layer.bright[: 2 * done]
+            layer.item.setData(color=colors)
+
+        self.head.setData(pos=np.asarray(head, dtype=float).reshape(1, 3))
         self._refresh_status()
 
     def _refresh_status(self):
         if self.total == 0:
             return
-        n = int(self.position)
-        pct = 100.0 * n / self.total
+        n = min(int(np.searchsorted(self.cum_end, self.elapsed, side="right")), self.total)
         self.status.setText(
-            f"movimento {n}/{self.total}  ({pct:.0f}%)   |   "
+            f"movimento {n}/{self.total}   |   "
+            f"tempo {_fmt(self.elapsed)} / {_fmt(self.total_time)}   |   "
             f"velocidade {self._speed():.1f}x"
         )
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

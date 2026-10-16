@@ -90,4 +90,14 @@ O projeto é destinado diretamente aos alunos, pesquisadores e educadores de uni
 
    - Todas as linhas usam a mesma espessura. O `GLLinePlotItem` aceita apenas uma largura por item, então os rápidos não aparecem mais finos que os cortes.
    - O modo de animação anda por movimentos, não por tempo real de máquina. Um movimento longo e um curto levam o mesmo tempo visual. Se precisar de tempo proporcional à distância ou à velocidade de avanço (`F`), é possível calcular isso no parser com um tempo acumulado por movimento.
+
+### 20/08 — quinta-feira ~ 6 horas
+
+1. **Adição de espessuras diferentes**. Agora cada tipo de movimento virou uma camada própria, um ``GLLinePlotItem`` com sua espessura. Rápidos usam ``RAPID_WIDTH`` e cortes usam ``CUT_WIDTH``.
+
+2. **Tempo real proporcional**. O parser calcula a duração de cada movimento como `distância / velocidade`. Para cortes, a velocidade é o `F` modal, convertido para mm/min quando o arquivo está em G20. Para G0, usa-se `RAPID_FEED`. Os arcos são divididos em pequenos segmentos, e cada um recebe o seu tempo. A animação passa a ser controlada por tempo acumulado (`cum_start` e `cum_end` 😳), e a cabeça da ferramenta é interpolada dentro de cada movimento, então ela desliza em vez de pular de ponto em ponto.
+
+3. **Controle de velocidade mais preciso**. Adição de um slider de velocidade mais preciso, além dos botões de predefinição (0.5x, 1x, 1.5x, 2x, 4x).
+
+4. **Status.** Mostra o movimento atual, o tempo decorrido e o tempo total no formato mm:ss, além da velocidade.
 	
