@@ -16,7 +16,9 @@ Execute o arquivo: ``python main.py``
 
 Em seguida, carregue um arquivo **G-Code** (.nc, .gcode, etc.) ou use o arquivo de exemplo: ``cubo-sample.nc``).
 
-(<details>)
+Diário de Dev 🤠👇👇
+
+<details>
 
 ## Diário de desenvolvimento 🤠
 
@@ -24,7 +26,7 @@ Em seguida, carregue um arquivo **G-Code** (.nc, .gcode, etc.) ou use o arquivo 
 
 **Tema:**
 
-	Modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de componentes metálicos: desenvolvimento de ferramenta independente e plugin nativo para o ecossistema Mach3.
+Modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de componentes metálicos: desenvolvimento de ferramenta independente e plugin nativo para o ecossistema Mach3.
 
 O projeto foi dividido em duas frentes complementares.
 
