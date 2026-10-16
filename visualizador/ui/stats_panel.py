@@ -98,7 +98,7 @@ class StatsPanel(QFrame):
             "rapid_time": StatCard("Tempo rápido"),
             "cut_length": StatCard("Trajeto de corte"),
             "rapid_length": StatCard("Trajeto rápido"),
-            "moves": StatCard("Movimentos", wide=True),
+            "moves": StatCard("Comandos de movimento", wide=True),
             "size": StatCard("Dimensões (mm)", wide=True),
         }
 
@@ -148,8 +148,12 @@ class StatsPanel(QFrame):
             f"{stats.total_moves}",
             f"{stats.cut_moves} cortes  ·  {stats.rapid_moves} rápidos",
         )
-        width, depth, height = stats.size
-        p["size"].set_value(f"{width:.1f} × {depth:.1f} × {height:.1f}")
+        commands = stats.commands
+        breakdown = "  ·  ".join(f"{name} {n}" for name, n in commands.items() if n)
+        p["moves"].set_value(
+            f"{sum(commands.values())} comandos",
+            f"{breakdown or 'nenhum'}  ·  {stats.total_moves} segmentos",
+        )
 
     def show_progress(self, elapsed: float, total_time: float,
                       done: int, count: int) -> None:

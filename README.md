@@ -319,6 +319,13 @@ Novidades:
 
 ### 24/09 — quinta-feira - Ajuste e responsividade na interface (~4h)
 
-1. Adição de scroll no painel
+1. **Adição de scroll no painel**
 
-2. Responsividade dos números dentro dos cards
+2. **Responsividade dos números dentro dos cards**
+
+### 26/09 — sábado - Aprofundamento no painel de estatísticas (~3h)
+
+1. **Mais detalhamento no painel de estatísticas**
+
+-  O cartão agora mostra o número de comandos de movimento;
+-  O detalhe mostra a divisão por tipo, como ``G0 1 | G1 1 | G2 1``

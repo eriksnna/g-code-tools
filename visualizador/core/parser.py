@@ -59,6 +59,7 @@ class Issue:
 class ParseResult:
     moves: list[Move] = field(default_factory=list)
     issues: list[Issue] = field(default_factory=list)
+    commands: dict[str, int] = field(default_factory=dict)
 
 
 def clean_line(raw: str) -> str:
@@ -79,7 +80,11 @@ def parse_gcode(text: str, default_feed: float = DEFAULT_FEED,
     interpreter = GCodeInterpreter(default_feed, limits)
     for lineno, raw in enumerate(text.splitlines(), start=1):
         interpreter.run_line(clean_line(raw), lineno)
-    return ParseResult(moves=interpreter.moves, issues=interpreter.issues)
+    return ParseResult(
+        moves=interpreter.moves,
+        issues=interpreter.issues,
+        commands=interpreter.commands,
+    )
 
 
 def arc_points(start: Point, end: Point, center: tuple[float, float],
@@ -124,6 +129,7 @@ class GCodeInterpreter:
         self.limits = limits
         self.moves: list[Move] = []
         self.issues: list[Issue] = []
+        self.commands = {"G0": 0, "G1": 0, "G2": 0, "G3": 0}
 
         self._lineno = 0
         self._feed_programmed = False
@@ -169,6 +175,7 @@ class GCodeInterpreter:
         # demais códigos G ainda não são interpretados
 
     def _move(self, words: dict[str, float]) -> None:
+        self.commands[f"G{self.motion}"] += 1
         end = self._target(words)
         if self.motion in MOTION_ARCS:
             self._arc(end, words)

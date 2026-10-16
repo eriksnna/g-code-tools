@@ -1,7 +1,7 @@
 """Estatísticas do programa. Calcula os números a partir do Toolpath, sem Qt."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -21,9 +21,10 @@ class ProgramStats:
     rapid_length: float    # mm
     layer_count: int
     size: tuple[float, float, float]  # dimensões da peça, mm (apenas trechos de corte)
+    commands: dict[str, int] = field(default_factory=dict)  # G0, G1, G2, G3
 
 
-def compute_stats(toolpath: Toolpath) -> ProgramStats:
+def compute_stats(toolpath: Toolpath, commands: dict[str, int] | None = None) -> ProgramStats:
     cut = toolpath.is_cut
     rapid = ~cut
     lengths = np.linalg.norm(toolpath.ends - toolpath.starts, axis=1)
@@ -40,6 +41,7 @@ def compute_stats(toolpath: Toolpath) -> ProgramStats:
         rapid_length=float(lengths[rapid].sum()),
         layer_count=_count_layers(toolpath),
         size=_cut_extent(toolpath),
+        commands=dict(commands or {}),
     )
 
 
