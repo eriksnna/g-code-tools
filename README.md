@@ -28,7 +28,7 @@ Rode o main.py, insira um arquivo **G-Code** (ou insira o ``cubo-sample.nc``).
 
 - Reunião com cliente | definição de objetivo, escopo e limitações:
 
-O cliente principal e orientador técnico da demanda é o Prof. [Dr. Gustavo Henrique](https://www.dief.unifi.it/vp-680-gustavo-senna.html), do **[Manufacturing Technologies Research Laboratory](https://www.dief.unifi.it/vp-207-about.html)** da **Universita degli Studi Firenze** (Florença - Itália).
+O cliente principal e orientador técnico da demanda é o [Prof. Dr. Gustavo Senna Carvalho](https://www.dief.unifi.it/vp-680-gustavo-senna.html), do **[Manufacturing Technologies Research Laboratory](https://www.dief.unifi.it/vp-207-about.html)** da **Universita degli Studi Firenze** (Florença - Itália).
 
 O projeto é destinado diretamente aos alunos, pesquisadores e educadores de universidades por todo o Brasil (e exterior) que dependem do mach3 ou de outras ferramentas CNC para ensino e realização de impressão 3D. Atualmente, os softwares de simulação e controle CNC disponíveis no mercado apresentam três grandes barreiras: são datados, possuem licenças pagas de alto custo, ou são de difícil acesso para instituições de ensino e estudantes. o objetivo principal deste projeto é democratizar o acesso à tecnologia de ponta na manufatura, facilitando o uso dessas ferramentas através de interfaces modernas e introduzindo no mercado um novo projeto acessível, seguro e de alto impacto educacional.
 

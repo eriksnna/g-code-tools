@@ -1,0 +1,11 @@
+# ambiente virtual
+.venv/
+
+# cache do Python e do pytest
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# configurações locais do editor
+.vscode/
+.idea/

@@ -1,0 +1,39 @@
+"""Cores e folha de estilo. Trocar o visual é feito apenas aqui."""
+
+BACKGROUND = "#16181d"
+GRID_COLOR = (70, 75, 85, 255)
+
+# Cores do traçado em OpenGL (RGBA, de 0 a 1)
+DIM_CUT = (0.2, 0.5, 0.7, 0.35)
+BRIGHT_CUT = (0.2, 0.8, 1.0, 1.0)
+DIM_RAPID = (1.0, 0.35, 0.35, 0.2)
+BRIGHT_RAPID = (1.0, 0.35, 0.35, 0.8)
+HEAD_COLOR = (1.0, 0.85, 0.2, 1.0)
+
+DARK_QSS = """
+QMainWindow { background: #16181d; }
+QWidget#central { background: #16181d; }
+QLabel { color: #e6e6e6; background: transparent; font-size: 13px; }
+QLabel#fileLabel { color: #8b94a5; }
+QLabel#status { color: #9aa3b2; font-family: Consolas, monospace; font-size: 12px; }
+QPushButton {
+    background: #2a2e38; color: #e6e6e6;
+    border: 1px solid #3a3f4b; border-radius: 6px; padding: 6px 12px;
+}
+QPushButton:hover { background: #343945; }
+QPushButton:pressed { background: #1f222a; }
+QPushButton:disabled { color: #5a606d; }
+QPushButton#play { background: #2b6cb0; border: 1px solid #3b82d0; font-size: 16px; }
+QPushButton#play:hover { background: #3478c4; }
+QPushButton#preset { padding: 2px 4px; font-size: 12px; }
+QPushButton#preset:checked { background: #3b82d0; border: 1px solid #3b82d0; }
+QFrame#playbar {
+    background: #1f222a; border: 1px solid #2c303b; border-radius: 10px;
+}
+QSlider::groove:horizontal { height: 6px; background: #343945; border-radius: 3px; }
+QSlider::sub-page:horizontal { background: #3b82d0; border-radius: 3px; }
+QSlider::handle:horizontal {
+    background: #e6e6e6; width: 14px; margin: -5px 0; border-radius: 7px;
+}
+QSlider:disabled::handle:horizontal { background: #5a606d; }
+"""
