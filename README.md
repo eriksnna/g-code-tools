@@ -34,7 +34,7 @@ O projeto foi dividido em duas frentes complementares.
 
 desenvolvimento de um aplicativo nativo para visualização avançada de trajetórias G-Code em ambientes 2D e 3D.
 
-Objetivos: 
+**Objetivos:** 
 
 - Interface moderna e intuitiva;
 - Simulação de trajetórias de impressão;
@@ -45,7 +45,7 @@ Objetivos:
 
 Desenvolvimento de um plugin nativo em C++ para o software mach3. 
 
-Objetivos:
+**Objetivos:**
 
 - Visualização das trajetórias em tempo real;
 - Animações 2D e 3D integradas à máquina;
@@ -64,14 +64,14 @@ Objetivos:
 
 ### Objetivos definidos
 
-O projeto é voltado para:
+**O projeto é voltado para:**
 
 - Estudantes;
 - Pesquisadores;
 - Docentes;
 - Instituições de ensino.
 
-Problemas identificados nas soluções atuais:
+**Problemas identificados nas soluções atuais:**
 
 - Softwares datados;
 - Licenças de alto custo;
@@ -93,14 +93,14 @@ democratizar o acesso à tecnologia de ponta na manufatura, facilitando o uso de
 
 ### 1/08 — sábado e 2/08 — domingo - Implementação do parser (~12h)
 
-1. Remoção do protótipo
+1. **Remoção do protótipo**
 
 - Removido o `plot_mock_gcode`;
 - Removida geração de espiral com NumPy;
 
-2. Implementação do ``GCodeParser``
+2. **Implementação do ``GCodeParser``**
 
-Funcionalidades
+**Funcionalidades**
 
 - remoção de comentários (; e ( ... ));
 - normalização das linhas;
@@ -113,25 +113,25 @@ Funcionalidades
 - conversão de arcos G2/G3 (centro dado por I/J, plano XY) em pequenos segmentos;
 - separação entre movimentos em cortes (G1/G2/G3) e rápidos (G0).
 
-3. Seleção de arquivos
+3. **Seleção de arquivos**
 
 - adicionado diálogo para escolher o arquivo.
 
-4. Visualização
+4. **Visualização**
 
 - Vermelho translúcido: movimentos rápidos;
 - Azul: movimentos de corte.
 
-5. Câmera
+5. **Câmera**
 
 - Centralização automática na peça;
 - Distância proporcional ao tamanho do modelo.
 
-6. Limpeza de cena
+6. **Limpeza de cena**
 
 - Remoção automática dos elementos anteriores ao recarregar arquvios.
 
-7. Status
+7. **Status**
 
 Exibição de:
 
@@ -147,7 +147,7 @@ Exibição de:
 
 ### 13/08 — quinta-feira a 16/08 — domingo - Sistema de reprodução (~27h)
 
-1. Ajuste dos movimentos.
+1. **Ajuste dos movimentos**
 
 Antes:
 
@@ -157,7 +157,7 @@ Agora:
 
 - guarda uma única lista `moves`, na sequência do arquivo, com a flag `is_cut`.
 
-2. Animação por cor, não por redesenho.
+2. **Animação por cor, não por redesenho**
 
 Substituição de redesenho por atualização de cores.
 
@@ -166,7 +166,7 @@ Benefícios:
 - Menor consumo de processamento, mantendo a fluidez da animação;
 - Melhor desempenho em arquivos grandes.
 
-3. Controles de mídia.
+3. **Controles de mídia**
 
 Adicionados:
 
@@ -185,12 +185,12 @@ Recursos adicionais:
   - 1.5x
   - 2.0x
 
-4. Tempo adaptativo
+4. **Tempo adaptativo**
 
 - Arquivos grandes: ~15 segundos;
 - Arquivos pequenos: duração mínima automática.
 
-5. Interface 
+5. **Interface **
 
 - Tema escuro;
 - barra de reprodução destacada;
@@ -204,15 +204,15 @@ Recursos adicionais:
 
 ### 20/08 — quinta-feira - Tempo real e melhorias visuais (~6h)
 
-1. Adição de espessuras independentes 
+1. **Adição de espessuras independente**s 
 
 Agora cada tipo de movimento virou uma camada própria, um ``GLLinePlotItem`` com sua espessura. Rápidos usam ``RAPID_WIDTH`` e cortes usam ``CUT_WIDTH``.
 
-2. Tempo real proporcional 
+2. **Tempo real proporcional** 
 
 O parser calcula a duração de cada movimento como `distância / velocidade`. Para cortes, a velocidade é o `F` modal, convertido para mm/min quando o arquivo está em G20. Para G0, usa-se `RAPID_FEED`. Os arcos são divididos em pequenos segmentos, e cada um recebe o seu tempo. A animação passa a ser controlada por tempo acumulado (`cum_start` e `cum_end` 😳), e a cabeça da ferramenta é interpolada dentro de cada movimento, então ela desliza em vez de pular de ponto em ponto.
 
-3. Controle de velocidade mais preciso 
+3. **Controle de velocidade mais preciso** 
 
 Novas Velocidades:
 
@@ -222,7 +222,7 @@ Novas Velocidades:
 - 2x
 - 4x
 
-4. Novo painel de status 
+4. **Novo painel de status** 
 
 Exibição de:
 
@@ -233,7 +233,7 @@ Exibição de:
 	
 ### 21/08 — sexta-feira a 28/08 — sexta-feira - Refatoração GERAL (~35h)
 
-Principais mudanças
+**Principais mudanças**
 
 - Refatoração completa do projeto;
 - Separação por módulos;
@@ -243,7 +243,7 @@ Principais mudanças
 
 ### 3/09 — quinta-feira - Correções e testes (~4h)
 
-Atividades
+**Atividades**
 
 - Correção de pequenos bugs 🐛;
 - realização de testes;
@@ -251,7 +251,7 @@ Atividades
 
 ### 11/09 — sexta-feira e 12/09 — sábado - Estatísticas e monitoramento (~10h)
 
-1. Adição de painel com estatísticas 
+1. **Adição de painel com estatísticas**
 
 Cálculos ao abrir o arquivo: 
 
@@ -262,7 +262,7 @@ Cálculos ao abrir o arquivo:
 - quantidade de movimentos;
 - dimensões da peça.
 
-2. Estatísticas de Simulação 
+2. **Estatísticas de Simulação**
 
 Atualização em tempo real:
 
@@ -272,13 +272,13 @@ Atualização em tempo real:
 - tempo restante;
 - tempo decorrido.
 
-3. Sistema de avisos
+3. **Sistema de avisos**
 
 - lista completa dos problemas encontrados no parser.
 
 ### 17/09 — quinta-feira a 21/09 — segunda-feira (~26h)
 
-1. Novo sistema de Issues
+1. **Novo sistema de Issues**
 
 Antes: 
 
@@ -290,7 +290,7 @@ passa a devolver `Issue(line, severity, message)`
 
 Cada `Move` guarda a linha de origem.
 
-2. Novas validações
+2. **Novas validações**
 
 Implementadas verificações para:
 
@@ -298,23 +298,21 @@ Implementadas verificações para:
 - arco com `R` (agora um erro com número de linha)
 - movimento fora da área de trabalho (`MACHINE_LIMITS`).
 
-3. Navegação por problemas
+3. **Navegação por problemas**
 
 Ao clicar em um problema:
 
 - A reprodução salta para o ponto correspondente;
 - O código relacionado é destacado.
 
-4. visualização por profundidade
+4. **visualização por profundidade**
 
 Novidades:
 
 - Colorização dos cortes por eixo Z;
 - Filtro de visualização por camada.
 
-5. 
-
-estabilidade e manutenção
+5. **estabilidade e manutenção**
 
 - Correção de bugs 🐛;
 - execução de bateria de testes.
