@@ -101,3 +101,6 @@ O projeto é destinado diretamente aos alunos, pesquisadores e educadores de uni
 
 4. **Status.** Mostra o movimento atual, o tempo decorrido e o tempo total no formato mm:ss, além da velocidade.
 	
+### 21/08 — sexta-feira / 22/08, 23/08, 24/08, 25/08, 26/08, 27/08, 28/08 — sexta - feira ~ 43 horas
+
+1. **Refatoração TOTAL do código e divisão por módulos** 😥😥😭😭.
