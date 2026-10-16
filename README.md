@@ -60,7 +60,7 @@ Desenvolvimento de um plugin nativo em C++ para o software mach3.
 **[Prof. Dr. Gustavo Senna Carvalho](https://www.dief.unifi.it/vp-680-gustavo-senna.html)**
 
 - [Manufacturing Technologies Research Laboratory](https://www.dief.unifi.it/vp-207-about.html)
-- Universita degli Studi Firenze (Florença - Itália)
+- Università degli Studi Firenze (Florença - Itália)
 
 ### Objetivos definidos
 
@@ -190,7 +190,7 @@ Recursos adicionais:
 - Arquivos grandes: ~15 segundos;
 - Arquivos pequenos: duração mínima automática.
 
-5. **Interface **
+5. **Interface**
 
 - Tema escuro;
 - barra de reprodução destacada;
@@ -204,7 +204,7 @@ Recursos adicionais:
 
 ### 20/08 — quinta-feira - Tempo real e melhorias visuais (~6h)
 
-1. **Adição de espessuras independente**s 
+1. **Adição de espessuras independentes**
 
 Agora cada tipo de movimento virou uma camada própria, um ``GLLinePlotItem`` com sua espessura. Rápidos usam ``RAPID_WIDTH`` e cortes usam ``CUT_WIDTH``.
 
