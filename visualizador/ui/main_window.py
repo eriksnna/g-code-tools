@@ -12,15 +12,12 @@ from PySide6.QtWidgets import (
 from config import APP_TITLE, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
 from core.parser import parse_gcode
 from core.playback import Playback
+from core.stats import compute_stats, format_duration
 from core.toolpath import Snapshot, Toolpath
 from ui.player_bar import PlayerBar
+from ui.stats_panel import StatsPanel
 from ui.theme import DARK_QSS
 from ui.viewport import ToolpathView
-
-
-def format_time(seconds: float) -> str:
-    minutes, secs = divmod(round(seconds), 60)
-    return f"{minutes:02d}:{secs:02d}"
 
 
 class MainWindow(QMainWindow):
@@ -40,6 +37,7 @@ class MainWindow(QMainWindow):
         self._file_label = QLabel("Nenhum arquivo carregado")
         self._file_label.setObjectName("fileLabel")
         self._viewport = ToolpathView()
+        self._stats_panel = StatsPanel()
         self._player = PlayerBar()
 
         self._timer = QTimer(self)
@@ -65,8 +63,13 @@ class MainWindow(QMainWindow):
         header.addWidget(self._open_button)
         header.addWidget(self._file_label, 1)
 
+        body = QHBoxLayout()
+        body.setSpacing(10)
+        body.addWidget(self._viewport, 1)
+        body.addWidget(self._stats_panel)
+
         root.addLayout(header)
-        root.addWidget(self._viewport, 1)
+        root.addLayout(body, 1)
         root.addWidget(self._player)
         self.setCentralWidget(central)
 
@@ -108,12 +111,14 @@ class MainWindow(QMainWindow):
         self._toolpath = Toolpath(result.moves)
         self._playback.reset(self._toolpath.total_time)
         self._viewport.show_toolpath(self._toolpath)
+        self._stats_panel.show_program(compute_stats(self._toolpath), result.warnings)
         self._player.set_enabled(True)
         self._refresh()
 
     def _show_empty(self) -> None:
         self._toolpath = None
         self._viewport.clear()
+        self._stats_panel.clear()
         self._player.set_enabled(False)
         self._player.set_status("Nenhum movimento encontrado no arquivo.")
 
@@ -168,6 +173,9 @@ class MainWindow(QMainWindow):
         self._player.set_progress(pb.progress)
         self._player.set_playing(pb.playing)
         self._player.set_status(self._status_text(snapshot))
+        self._stats_panel.show_progress(
+            pb.elapsed, pb.total_time, snapshot.done, self._toolpath.count,
+        )
         self._sync_timer()
 
     def _sync_timer(self) -> None:
@@ -181,7 +189,7 @@ class MainWindow(QMainWindow):
         pb = self._playback
         text = (
             f"movimento {snapshot.done}/{self._toolpath.count}   |   "
-            f"tempo {format_time(pb.elapsed)} / {format_time(pb.total_time)}   |   "
+            f"tempo {format_duration(pb.elapsed)} / {format_duration(pb.total_time)}   |   "
             f"velocidade {pb.speed:.1f}x"
         )
         if self._warnings:

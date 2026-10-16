@@ -36,4 +36,21 @@ QSlider::handle:horizontal {
     background: #e6e6e6; width: 14px; margin: -5px 0; border-radius: 7px;
 }
 QSlider:disabled::handle:horizontal { background: #5a606d; }
+QFrame#statsPanel {
+    background: #1f222a; border: 1px solid #2c303b; border-radius: 10px;
+}
+QFrame#card {
+    background: #272b35; border: 1px solid #323744; border-radius: 8px;
+}
+QLabel#cardTitle { color: #7d8698; font-size: 10px; font-weight: bold; }
+QLabel#cardValue { color: #f0f2f5; font-size: 16px; font-weight: 600; }
+QLabel#sectionTitle {
+    color: #9aa3b2; font-size: 11px; font-weight: bold; margin-top: 4px;
+}
+QProgressBar { background: #343945; border: none; border-radius: 4px; }
+QProgressBar::chunk { background: #3b82d0; border-radius: 4px; }
+QListWidget#warnings {
+    background: #272b35; color: #f0b429;
+    border: 1px solid #323744; border-radius: 8px; font-size: 12px;
+}
 """
