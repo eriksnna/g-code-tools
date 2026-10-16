@@ -14,7 +14,7 @@ Modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de
 
 Rode o main.py, insira um arquivo **G-Code** (ou insira o ``cubo-sample.nc``).
 
-![Funcionamento do App demonstrando o trajeto do cubo.](assets/sample.png)
+![Funcionamento do App demonstrando o trajeto do cubo.](visualizador/assets/sample.png)
 
 ### 21/07 — terça-feira ~ 6 horas
 
