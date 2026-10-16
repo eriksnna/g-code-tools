@@ -22,6 +22,8 @@ Rode o main.py, insira um arquivo **G-Code** (ou insira o ``cubo-sample.nc``).
 	
 	- **Parte 2 -** Integração legada: desenvolvimento de um plugin nativo em C++ injetável no software legado mach3. Este módulo permitirá a visualização e teste das trajetórias de corte em tempo real (animações 2D e 3D integradas à memória da máquina), criando a base tecnológica para uma possível renovação completa da interface gráfica (GUI) original do sistema.
 
+### Parte 1:
+
 ### 23/07 — quinta-feira ~ 7 horas
 
 - Reunião com cliente | definição de objetivo, escopo e limitações:
