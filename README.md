@@ -2,7 +2,7 @@
 
 ### Sobre
 
-Modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de componentes metálicos: desenvolvimento de ferramenta independente e plugin nativo para o ecossistema mach3.
+Modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de componentes metálicos: desenvolvimento de ferramenta de parsing, simulação e leitura de G-Code.
 
 ### Instalação e uso
 
