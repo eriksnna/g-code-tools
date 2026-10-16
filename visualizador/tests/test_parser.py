@@ -58,3 +58,7 @@ def test_arc_with_r_is_reported_with_line_number():
     result = parse_gcode("G1 X10\nG2 X0 Y10 R5")
     assert len(result.moves) == 1
     assert result.warnings and result.warnings[0].startswith("Linha 2")
+
+def test_multiple_g_codes_on_same_line_are_all_applied():
+    result = parse_gcode("G91 G1 X5")
+    assert result.moves[0].end == (5, 0, 0)

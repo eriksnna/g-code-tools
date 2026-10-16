@@ -54,9 +54,9 @@ def clean_line(raw: str) -> str:
     return without_semicolon.strip().upper()
 
 
-def parse_words(line: str) -> dict[str, float]:
-    """'G1 X10 Y-2.5' -> {'G': 1.0, 'X': 10.0, 'Y': -2.5}"""
-    return {letter: float(value) for letter, value in WORD_RE.findall(line)}
+def parse_words(line: str) -> list[tuple[str, float]]:
+    """'G20 G1 X10 Y-2.5' -> [('G', 20.0), ('G', 1.0), ('X', 10.0), ('Y', -2.5)]"""
+    return [(letter, float(value)) for letter, value in WORD_RE.findall(line)]
 
 
 def parse_gcode(text: str, default_feed: float = DEFAULT_FEED) -> ParseResult:
@@ -116,16 +116,20 @@ class GCodeInterpreter:
         words = parse_words(line)
         if not words:
             return
-        self._apply_modal_codes(words)
-        if any(axis in words for axis in AXES):
-            self._move(words)
 
-    def _apply_modal_codes(self, words: dict[str, float]) -> None:
-        # G antes de F: a linha "G20 F10" deve interpretar F já em polegadas
-        if "G" in words:
-            self._apply_g_code(int(words["G"]))
-        if "F" in words:
-            self.feed = words["F"] * self.unit_scale
+        # Todos os G da linha são aplicados primeiro, na ordem em que aparecem,
+        # para que "G20 F10" interprete o F já em polegadas.
+        for letter, value in words:
+            if letter == "G":
+                self._apply_g_code(int(value))
+
+        axis_words = {letter: value for letter, value in words if letter != "G"}
+
+        if "F" in axis_words:
+            self.feed = axis_words["F"] * self.unit_scale
+
+        if any(axis in axis_words for axis in AXES):
+            self._move(axis_words)
 
     def _apply_g_code(self, code: int) -> None:
         if code in (G_RAPID, G_LINEAR, *MOTION_ARCS):
