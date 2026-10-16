@@ -54,11 +54,11 @@ def test_cw_and_ccw_take_opposite_directions():
 
 
 def test_arc_with_r_is_reported_as_error_with_line_number():
-    result = parse_gcode("G1 X10\nG2 X0 Y10 R5")
+    result = parse_gcode("G1 X10 F100\nG2 X0 Y10 R5")
     assert len(result.moves) == 1
-    issue = result.issues[0]
-    assert issue.line == 2
-    assert issue.severity == ERROR
+    errors = [i for i in result.issues if i.severity == ERROR]
+    assert len(errors) == 1
+    assert errors[0].line == 2
 
 def test_multiple_g_codes_on_same_line_are_all_applied():
     result = parse_gcode("G91 G1 X5")

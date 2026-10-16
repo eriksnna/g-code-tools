@@ -22,7 +22,7 @@ class IssuesPanel(QFrame):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("issuesPanel")
-        self.setFixedWidth(PANEL_WIDTH)
+        self.setMinimumWidth(PANEL_WIDTH)
 
         title = QLabel("VALIDAÇÃO")
         title.setObjectName("sectionTitle")

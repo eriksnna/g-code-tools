@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QElapsedTimer, QTimer
+from PySide6.QtCore import Qt, QElapsedTimer, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
-    QFileDialog, QHBoxLayout, QLabel, QMainWindow, QPushButton,
-    QVBoxLayout, QWidget,
+    QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
+    QScrollArea, QSplitter, QVBoxLayout, QWidget,
 )
 
 from config import APP_TITLE, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
@@ -73,18 +73,32 @@ class MainWindow(QMainWindow):
         header.addWidget(self._file_label, 1)
         header.addWidget(self._layer_controls)
 
-        side = QVBoxLayout()
-        side.setSpacing(10)
-        side.addWidget(self._stats_panel)
-        side.addWidget(self._issues_panel, 1)
+        # painel de estatísticas dentro de uma área com rolagem: nunca é comprimido
+        stats_scroll = QScrollArea()
+        stats_scroll.setWidgetResizable(True)
+        stats_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        stats_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        stats_scroll.setWidget(self._stats_panel)
 
-        body = QHBoxLayout()
-        body.setSpacing(10)
-        body.addWidget(self._viewport, 1)
-        body.addLayout(side)
+        # lateral redimensionável: o usuário divide o espaço entre estatísticas e validação
+        side = QSplitter(Qt.Orientation.Vertical)
+        side.addWidget(stats_scroll)
+        side.addWidget(self._issues_panel)
+        side.setStretchFactor(0, 1)
+        side.setStretchFactor(1, 1)
+        side.setChildrenCollapsible(False)
+
+        # divisor horizontal entre o viewport 3D e a lateral
+        self._viewport.setMinimumSize(400, 300)
+        body = QSplitter(Qt.Orientation.Horizontal)
+        body.addWidget(self._viewport)
+        body.addWidget(side)
+        body.setStretchFactor(0, 1)
+        body.setSizes([760, 320])
+        body.setChildrenCollapsible(False)
 
         root.addLayout(header)
-        root.addLayout(body, 1)
+        root.addWidget(body, 1)
         root.addWidget(self._player)
         self.setCentralWidget(central)
 

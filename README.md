@@ -276,7 +276,7 @@ Atualização em tempo real:
 
 - lista completa dos problemas encontrados no parser.
 
-### 17/09 — quinta-feira a 21/09 — segunda-feira (~26h)
+### 17/09 — quinta-feira a 21/09 — segunda-feira - Validações e sistema de Issues (~26h)
 
 1. **Novo sistema de Issues**
 
@@ -316,3 +316,9 @@ Novidades:
 
 - Correção de bugs 🐛;
 - execução de bateria de testes.
+
+### 24/09 — quinta-feira - Ajuste e responsividade na interface (~4h)
+
+1. Adição de scroll no painel
+
+2. Responsividade dos números dentro dos cards

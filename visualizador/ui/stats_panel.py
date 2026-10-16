@@ -1,37 +1,65 @@
 """Painel lateral com o resumo do programa e o andamento da simulação."""
 from __future__ import annotations
 
-from PySide6.QtWidgets import QFrame, QGridLayout, QLabel, QProgressBar, QVBoxLayout
+from PySide6.QtWidgets import (
+    QFrame, QGridLayout, QLabel, QProgressBar, QSizePolicy, QVBoxLayout,
+)
 
 from core.stats import ProgramStats, format_duration, format_length
 
-PANEL_WIDTH = 300
+PANEL_MIN_WIDTH = 240
 PROGRESS_STEPS = 1000
 EMPTY_VALUE = "—"
+VALUE_MIN_PX = 12
+VALUE_MAX_PX = 18
+VALUE_PX_DIVISOR = 11  # fonte = largura do cartão / divisor, dentro dos limites acima
 
 
 class StatCard(QFrame):
-    """Cartão com um título pequeno e um valor em destaque."""
+    """Cartão com título, valor em destaque e detalhe opcional. Adapta a fonte à largura."""
 
     def __init__(self, title: str, wide: bool = False) -> None:
         super().__init__()
         self.setObjectName("card")
-        self.wide = wide  # ocupa as duas colunas do grid
+        self.wide = wide
+        self._font_px = 0
+
+        self._title = QLabel(title.upper())
+        self._title.setObjectName("cardTitle")
+        self._title.setWordWrap(True)
 
         self._value = QLabel(EMPTY_VALUE)
         self._value.setObjectName("cardValue")
+        self._value.setWordWrap(True)
 
-        title_label = QLabel(title.upper())
-        title_label.setObjectName("cardTitle")
+        self._detail = QLabel()
+        self._detail.setObjectName("cardDetail")
+        self._detail.setWordWrap(True)
+        self._detail.setVisible(False)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 8, 12, 10)
         layout.setSpacing(2)
-        layout.addWidget(title_label)
+        layout.addWidget(self._title)
         layout.addWidget(self._value)
+        layout.addWidget(self._detail)
 
-    def set_value(self, text: str) -> None:
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+    def set_value(self, text: str, detail: str = "") -> None:
         self._value.setText(text)
+        self._detail.setText(detail)
+        self._detail.setVisible(bool(detail))
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._fit_value_font()
+
+    def _fit_value_font(self) -> None:
+        px = max(VALUE_MIN_PX, min(VALUE_MAX_PX, self.width() // VALUE_PX_DIVISOR))
+        if px != self._font_px:
+            self._font_px = px
+            self._value.setStyleSheet(f"font-size: {px}px;")
 
 
 def _section_title(text: str) -> QLabel:
@@ -61,7 +89,7 @@ class StatsPanel(QFrame):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("statsPanel")
-        self.setFixedWidth(PANEL_WIDTH)
+        self.setMinimumWidth(PANEL_MIN_WIDTH)
 
         self._program = {
             "total_time": StatCard("Tempo total"),
@@ -117,8 +145,8 @@ class StatsPanel(QFrame):
         p["cut_length"].set_value(format_length(stats.cut_length))
         p["rapid_length"].set_value(format_length(stats.rapid_length))
         p["moves"].set_value(
-            f"{stats.total_moves}   ·   {stats.cut_moves} cortes   ·   "
-            f"{stats.rapid_moves} rápidos"
+            f"{stats.total_moves}",
+            f"{stats.cut_moves} cortes  ·  {stats.rapid_moves} rápidos",
         )
         width, depth, height = stats.size
         p["size"].set_value(f"{width:.1f} × {depth:.1f} × {height:.1f}")
