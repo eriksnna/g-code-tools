@@ -14,8 +14,6 @@ Modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de
 
 Rode o main.py, insira um arquivo **G-Code** (ou insira o ``cubo-sample.nc``).
 
-![Funcionamento do App demonstrando o trajeto do cubo.](visualizador/assets/sample.png)
-
 ### 21/07 — terça-feira ~ 6 horas
 
 - **Definição do projeto:** Modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de componentes metálicos: desenvolvimento de ferramenta independente e plugin nativo para o ecossistema mach3. O projeto será desenvolvido em duas frentes tecnológicas complementares para otimizar ferramentas de trabalho em manufatura aditiva / impressão 3D.
