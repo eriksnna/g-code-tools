@@ -26,3 +26,11 @@ def test_snapshot_interpolates_inside_a_move():
     assert snap.head[0] == pytest.approx(30.0)
     assert snap.done == 0
     assert snap.started == 1
+
+def test_time_at_line_returns_start_of_first_move_from_that_line():
+    path = Toolpath([
+        Move((0, 0, 0), (10, 0, 0), is_cut=True, feed=600.0, line=1),  # 1 s
+        Move((10, 0, 0), (20, 0, 0), is_cut=True, feed=600.0, line=3),  # começa em 1 s
+    ])
+    assert path.time_at_line(2) == pytest.approx(1.0)
+    assert path.time_at_line(4) is None

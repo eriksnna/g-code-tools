@@ -9,6 +9,14 @@ BRIGHT_CUT = (0.2, 0.8, 1.0, 1.0)
 DIM_RAPID = (1.0, 0.35, 0.35, 0.2)
 BRIGHT_RAPID = (1.0, 0.35, 0.35, 0.8)
 HEAD_COLOR = (1.0, 0.85, 0.2, 1.0)
+ERROR_COLOR = "#ff6b6b"
+WARNING_COLOR = "#f0b429"
+CUT_DEPTH_ALPHA = 0.35  # opacidade dos cortes apagados na coloração por profundidade
+DEPTH_STOPS = (         # do mais fundo ao topo
+    (0.25, 0.5, 1.0),
+    (0.3, 0.9, 0.7),
+    (1.0, 0.85, 0.2),
+)
 
 DARK_QSS = """
 QMainWindow { background: #16181d; }
@@ -53,4 +61,26 @@ QListWidget#warnings {
     background: #272b35; color: #f0b429;
     border: 1px solid #323744; border-radius: 8px; font-size: 12px;
 }
+QComboBox {
+    background: #2a2e38; color: #e6e6e6;
+    border: 1px solid #3a3f4b; border-radius: 6px; padding: 4px 8px; min-width: 120px;
+}
+QComboBox QAbstractItemView {
+    background: #2a2e38; color: #e6e6e6; selection-background-color: #3b82d0;
+}
+QCheckBox { color: #e6e6e6; spacing: 6px; }
+QFrame#issuesPanel {
+    background: #1f222a; border: 1px solid #2c303b; border-radius: 10px;
+}
+QLabel#issueSummary { color: #9aa3b2; font-size: 12px; }
+QLabel#issueEmpty { color: #6fcf97; font-size: 12px; }
+QLabel#issueDetail {
+    color: #9aa3b2; font-family: Consolas, monospace; font-size: 11px;
+    background: #272b35; border-radius: 6px; padding: 6px;
+}
+QListWidget#issues {
+    background: #272b35; border: 1px solid #323744; border-radius: 8px; font-size: 12px;
+}
+QListWidget#issues::item { padding: 4px; }
+QListWidget#issues::item:selected { background: #343945; }
 """

@@ -1,15 +1,12 @@
 """Painel lateral com o resumo do programa e o andamento da simulação."""
 from __future__ import annotations
 
-from PySide6.QtWidgets import (
-    QFrame, QGridLayout, QLabel, QListWidget, QProgressBar, QVBoxLayout,
-)
+from PySide6.QtWidgets import QFrame, QGridLayout, QLabel, QProgressBar, QVBoxLayout
 
 from core.stats import ProgramStats, format_duration, format_length
 
 PANEL_WIDTH = 300
 PROGRESS_STEPS = 1000
-WARNINGS_MAX_HEIGHT = 120
 EMPTY_VALUE = "—"
 
 
@@ -88,11 +85,6 @@ class StatsPanel(QFrame):
             "remaining": StatCard("Restante"),
         }
 
-        self._warnings_title = _section_title("Avisos")
-        self._warnings_list = QListWidget()
-        self._warnings_list.setObjectName("warnings")
-        self._warnings_list.setMaximumHeight(WARNINGS_MAX_HEIGHT)
-
         self._build_layout()
         self.clear()
 
@@ -107,9 +99,6 @@ class StatsPanel(QFrame):
         layout.addWidget(_section_title("Simulação"))
         layout.addWidget(self._progress_bar)
         layout.addLayout(_card_grid(list(self._progress.values())))
-
-        layout.addWidget(self._warnings_title)
-        layout.addWidget(self._warnings_list)
         layout.addStretch()
 
     # --- atualização do estado exibido ---
@@ -118,9 +107,8 @@ class StatsPanel(QFrame):
         for card in (*self._program.values(), *self._progress.values()):
             card.set_value(EMPTY_VALUE)
         self._progress_bar.setValue(0)
-        self._show_warnings([])
 
-    def show_program(self, stats: ProgramStats, warnings: list[str]) -> None:
+    def show_program(self, stats: ProgramStats) -> None:
         p = self._program
         p["total_time"].set_value(format_duration(stats.total_time))
         p["layers"].set_value(str(stats.layer_count))
@@ -134,7 +122,6 @@ class StatsPanel(QFrame):
         )
         width, depth, height = stats.size
         p["size"].set_value(f"{width:.1f} × {depth:.1f} × {height:.1f}")
-        self._show_warnings(warnings)
 
     def show_progress(self, elapsed: float, total_time: float,
                       done: int, count: int) -> None:
@@ -146,12 +133,3 @@ class StatsPanel(QFrame):
         g["current"].set_value(f"{done} / {count}")
         g["elapsed"].set_value(format_duration(elapsed))
         g["remaining"].set_value(format_duration(max(0.0, total_time - elapsed)))
-
-    def _show_warnings(self, warnings: list[str]) -> None:
-        self._warnings_list.clear()
-        self._warnings_list.addItems(warnings)
-        self._warnings_list.setVisible(bool(warnings))
-        if warnings:
-            self._warnings_title.setText(f"Avisos ({len(warnings)})")
-        else:
-            self._warnings_title.setText("Avisos: nenhum")

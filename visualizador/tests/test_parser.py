@@ -3,8 +3,7 @@ import math
 
 import pytest
 
-from core.parser import arc_points, clean_line, parse_gcode
-
+from core.parser import ERROR, WARNING, arc_points, clean_line, parse_gcode
 
 def test_clean_line_removes_comments_and_normalizes():
     assert clean_line("g1 x10 (lateral) ; fim") == "G1 X10"
@@ -54,11 +53,38 @@ def test_cw_and_ccw_take_opposite_directions():
     assert cw[len(cw) // 2][1] < 0      # G2 dá a volta pelo terceiro quadrante
 
 
-def test_arc_with_r_is_reported_with_line_number():
+def test_arc_with_r_is_reported_as_error_with_line_number():
     result = parse_gcode("G1 X10\nG2 X0 Y10 R5")
     assert len(result.moves) == 1
-    assert result.warnings and result.warnings[0].startswith("Linha 2")
+    issue = result.issues[0]
+    assert issue.line == 2
+    assert issue.severity == ERROR
 
 def test_multiple_g_codes_on_same_line_are_all_applied():
     result = parse_gcode("G91 G1 X5")
     assert result.moves[0].end == (5, 0, 0)
+
+def test_missing_feed_warns_once_at_first_cut():
+    result = parse_gcode("G1 X10\nG1 X20")
+    feed_issues = [i for i in result.issues if "F ausente" in i.message]
+    assert len(feed_issues) == 1
+    assert feed_issues[0].line == 1
+    assert feed_issues[0].severity == WARNING
+
+
+def test_rapid_without_feed_does_not_warn():
+    assert parse_gcode("G0 X10").issues == []
+
+
+def test_move_outside_work_area_is_reported_once_per_line():
+    limits = {"X": (0, 300), "Y": (0, 200), "Z": (-100, 100)}
+    result = parse_gcode("G1 X400 Y400 F100", limits=limits)
+    bounds = [i for i in result.issues if "área de trabalho" in i.message]
+    assert len(bounds) == 1
+    assert bounds[0].line == 1
+    assert bounds[0].severity == ERROR
+
+
+def test_moves_have_their_source_line():
+    result = parse_gcode("G21\n\nG1 X10 F100\nG1 X20 F100")
+    assert [m.line for m in result.moves] == [3, 4]

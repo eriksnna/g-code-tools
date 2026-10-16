@@ -7,8 +7,7 @@ import numpy as np
 
 from core.toolpath import Toolpath
 
-LAYER_DECIMALS = 3  # profundidades com diferença menor que isso são a mesma camada
-
+from core.layers import depth_levels
 
 @dataclass(frozen=True)
 class ProgramStats:
@@ -45,8 +44,7 @@ def compute_stats(toolpath: Toolpath) -> ProgramStats:
 
 
 def _count_layers(toolpath: Toolpath) -> int:
-    cut_depths = toolpath.ends[toolpath.is_cut, 2]
-    return int(np.unique(np.round(cut_depths, LAYER_DECIMALS)).size)
+    return int(depth_levels(toolpath).size)
 
 
 def _cut_extent(toolpath: Toolpath) -> tuple[float, float, float]:

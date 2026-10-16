@@ -38,6 +38,7 @@ class Toolpath:
         self.starts = np.array([m.start for m in moves], dtype=float)
         self.ends = np.array([m.end for m in moves], dtype=float)
         self.is_cut = np.array([m.is_cut for m in moves], dtype=bool)
+        self.lines = np.array([m.line for m in moves], dtype=int)  # não decrescente
 
         feeds = np.array([m.feed if m.is_cut else rapid_feed for m in moves], dtype=float)
         feeds = np.maximum(feeds, MIN_FEED)
@@ -70,3 +71,10 @@ class Toolpath:
         head = self.starts[k] + progress * (self.ends[k] - self.starts[k])
         started = k + 1 if t > begin else k
         return Snapshot(head=head, done=k, started=started)
+
+    def time_at_line(self, line: int) -> float | None:
+        """Instante em que começa o primeiro movimento a partir da linha dada."""
+        index = int(np.searchsorted(self.lines, line, side="left"))
+        if index >= self.count:
+            return None
+        return float(self.cum_start[index])

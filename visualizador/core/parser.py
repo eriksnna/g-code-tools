@@ -5,9 +5,10 @@ import math
 import re
 from dataclasses import dataclass, field
 
-from config import ARC_STEP_DEG, DEFAULT_FEED, INCH_TO_MM
+from config import ARC_STEP_DEG, DEFAULT_FEED, INCH_TO_MM, MACHINE_LIMITS
 
 Point = tuple[float, float, float]
+Limits = dict[str, tuple[float, float]]
 
 G_RAPID = 0
 G_LINEAR = 1
@@ -18,6 +19,10 @@ G_ABSOLUTE = 90
 G_INCREMENTAL = 91
 MOTION_ARCS = (G_CW_ARC, G_CCW_ARC)
 AXES = "XYZ"
+
+ERROR = "erro"
+WARNING = "aviso"
+BOUNDS_TOLERANCE = 1e-6
 
 WORD_RE = re.compile(r"([A-Z])\s*([-+]?(?:\d+\.?\d*|\.\d+))")
 PAREN_COMMENT_RE = re.compile(r"\(.*?\)")
@@ -34,7 +39,8 @@ class Move:
     start: Point
     end: Point
     is_cut: bool
-    feed: float  # mm/min programado; relevante apenas para cortes
+    feed: float   # mm/min programado; relevante apenas para cortes
+    line: int = 0 # linha de origem no arquivo, começando em 1
 
     @property
     def length(self) -> float:
@@ -42,9 +48,17 @@ class Move:
 
 
 @dataclass(frozen=True)
+class Issue:
+    """Problema encontrado no arquivo, associado a uma linha."""
+    line: int
+    severity: str  # ERROR ou WARNING
+    message: str
+
+
+@dataclass(frozen=True)
 class ParseResult:
     moves: list[Move] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
+    issues: list[Issue] = field(default_factory=list)
 
 
 def clean_line(raw: str) -> str:
@@ -59,16 +73,13 @@ def parse_words(line: str) -> list[tuple[str, float]]:
     return [(letter, float(value)) for letter, value in WORD_RE.findall(line)]
 
 
-def parse_gcode(text: str, default_feed: float = DEFAULT_FEED) -> ParseResult:
-    """Lê o texto inteiro e devolve os movimentos e os avisos encontrados."""
-    interpreter = GCodeInterpreter(default_feed)
-    warnings: list[str] = []
+def parse_gcode(text: str, default_feed: float = DEFAULT_FEED,
+                limits: Limits = MACHINE_LIMITS) -> ParseResult:
+    """Lê o texto inteiro e devolve os movimentos e os problemas encontrados."""
+    interpreter = GCodeInterpreter(default_feed, limits)
     for lineno, raw in enumerate(text.splitlines(), start=1):
-        try:
-            interpreter.run_line(clean_line(raw))
-        except GCodeError as err:
-            warnings.append(f"Linha {lineno}: {err}")
-    return ParseResult(moves=interpreter.moves, warnings=warnings)
+        interpreter.run_line(clean_line(raw), lineno)
+    return ParseResult(moves=interpreter.moves, issues=interpreter.issues)
 
 
 def arc_points(start: Point, end: Point, center: tuple[float, float],
@@ -88,7 +99,7 @@ def arc_points(start: Point, end: Point, center: tuple[float, float],
         z = start[2] + (end[2] - start[2]) * t
         points.append((cx + radius * math.cos(angle), cy + radius * math.sin(angle), z))
 
-    points[-1] = end  # garante que o último ponto é exatamente o destino
+    points[-1] = end  # o último ponto é exatamente o destino
     return points
 
 
@@ -104,29 +115,44 @@ def _signed_sweep(delta: float, clockwise: bool) -> float:
 class GCodeInterpreter:
     """Mantém o estado modal da máquina enquanto percorre as linhas."""
 
-    def __init__(self, default_feed: float) -> None:
+    def __init__(self, default_feed: float, limits: Limits = MACHINE_LIMITS) -> None:
         self.position: Point = (0.0, 0.0, 0.0)
         self.absolute = True
         self.unit_scale = 1.0
         self.motion = G_RAPID
         self.feed = default_feed
+        self.limits = limits
         self.moves: list[Move] = []
+        self.issues: list[Issue] = []
 
-    def run_line(self, line: str) -> None:
+        self._lineno = 0
+        self._feed_programmed = False
+        self._feed_warned = False
+        self._bounds_reported_line = 0
+
+    def run_line(self, line: str, lineno: int) -> None:
+        self._lineno = lineno
+        try:
+            self._execute(line)
+        except GCodeError as err:
+            self._report(ERROR, str(err))
+
+    # --- interpretação da linha ---
+
+    def _execute(self, line: str) -> None:
         words = parse_words(line)
         if not words:
             return
 
-        # Todos os G da linha são aplicados primeiro, na ordem em que aparecem,
-        # para que "G20 F10" interprete o F já em polegadas.
+        # Todos os G da linha são aplicados primeiro, na ordem em que aparecem
         for letter, value in words:
             if letter == "G":
                 self._apply_g_code(int(value))
 
         axis_words = {letter: value for letter, value in words if letter != "G"}
-
         if "F" in axis_words:
             self.feed = axis_words["F"] * self.unit_scale
+            self._feed_programmed = True
 
         if any(axis in axis_words for axis in AXES):
             self._move(axis_words)
@@ -160,28 +186,59 @@ class GCodeInterpreter:
         x, y, z = self.position
         return (resolve("X", x), resolve("Y", y), resolve("Z", z))
 
+    # --- movimentos ---
+
     def _line(self, end: Point) -> None:
         if end == self.position:
             return
-        self.moves.append(Move(
-            start=self.position,
-            end=end,
-            is_cut=self.motion != G_RAPID,
-            feed=self.feed,
-        ))
+        is_cut = self.motion != G_RAPID
+        if is_cut:
+            self._check_feed()
+        self._check_bounds([end])
+        self.moves.append(Move(self.position, end, is_cut, self.feed, self._lineno))
 
     def _arc(self, end: Point, words: dict[str, float]) -> None:
         if "R" in words:
             raise GCodeError("arco com R não suportado; use I/J")
 
+        self._check_feed()
         start = self.position
         center = (
             start[0] + words.get("I", 0.0) * self.unit_scale,
             start[1] + words.get("J", 0.0) * self.unit_scale,
         )
         points = arc_points(start, end, center, clockwise=self.motion == G_CW_ARC)
+        self._check_bounds(points)
 
         previous = start
         for point in points:
-            self.moves.append(Move(previous, point, is_cut=True, feed=self.feed))
+            self.moves.append(Move(previous, point, True, self.feed, self._lineno))
             previous = point
+
+    # --- validação ---
+
+    def _check_feed(self) -> None:
+        """Avisa uma única vez se o corte começa sem F programado."""
+        if self._feed_programmed or self._feed_warned:
+            return
+        self._feed_warned = True
+        self._report(WARNING, f"avanço F ausente; usando {self.feed:g} mm/min")
+
+    def _check_bounds(self, points: list[Point]) -> None:
+        """Reporta no máximo um problema de área de trabalho por linha."""
+        if self._bounds_reported_line == self._lineno:
+            return
+        for point in points:
+            for axis, value in zip(AXES, point):
+                low, high = self.limits[axis]
+                if not low - BOUNDS_TOLERANCE <= value <= high + BOUNDS_TOLERANCE:
+                    self._bounds_reported_line = self._lineno
+                    self._report(
+                        ERROR,
+                        f"fora da área de trabalho: {axis} = {value:.2f} "
+                        f"(faixa {low:g} a {high:g} mm)",
+                    )
+                    return
+
+    def _report(self, severity: str, message: str) -> None:
+        self.issues.append(Issue(self._lineno, severity, message))

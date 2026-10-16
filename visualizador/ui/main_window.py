@@ -6,14 +6,18 @@ from pathlib import Path
 from PySide6.QtCore import QElapsedTimer, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
-    QFileDialog, QHBoxLayout, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget,
+    QFileDialog, QHBoxLayout, QLabel, QMainWindow, QPushButton,
+    QVBoxLayout, QWidget,
 )
 
 from config import APP_TITLE, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
-from core.parser import parse_gcode
+from core.layers import depth_levels
+from core.parser import ERROR, Issue, parse_gcode
 from core.playback import Playback
 from core.stats import compute_stats, format_duration
 from core.toolpath import Snapshot, Toolpath
+from ui.issues_panel import IssuesPanel
+from ui.layer_controls import LayerControls
 from ui.player_bar import PlayerBar
 from ui.stats_panel import StatsPanel
 from ui.theme import DARK_QSS
@@ -30,14 +34,17 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(DARK_QSS)
 
         self._toolpath: Toolpath | None = None
-        self._warnings: list[str] = []
+        self._issues: list[Issue] = []
+        self._source_lines: list[str] = []
         self._playback = Playback()
 
         self._open_button = QPushButton("Abrir G-code...")
         self._file_label = QLabel("Nenhum arquivo carregado")
         self._file_label.setObjectName("fileLabel")
+        self._layer_controls = LayerControls()
         self._viewport = ToolpathView()
         self._stats_panel = StatsPanel()
+        self._issues_panel = IssuesPanel()
         self._player = PlayerBar()
 
         self._timer = QTimer(self)
@@ -49,6 +56,7 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self._player.set_speed(self._playback.speed)
         self._player.set_enabled(False)
+        self._layer_controls.set_levels([])
 
     # --- montagem ---
 
@@ -60,13 +68,20 @@ class MainWindow(QMainWindow):
         root.setSpacing(10)
 
         header = QHBoxLayout()
+        header.setSpacing(10)
         header.addWidget(self._open_button)
         header.addWidget(self._file_label, 1)
+        header.addWidget(self._layer_controls)
+
+        side = QVBoxLayout()
+        side.setSpacing(10)
+        side.addWidget(self._stats_panel)
+        side.addWidget(self._issues_panel, 1)
 
         body = QHBoxLayout()
         body.setSpacing(10)
         body.addWidget(self._viewport, 1)
-        body.addWidget(self._stats_panel)
+        body.addLayout(side)
 
         root.addLayout(header)
         root.addLayout(body, 1)
@@ -85,6 +100,12 @@ class MainWindow(QMainWindow):
         p.scrubbed.connect(self._scrub_to)
         p.speed_changed.connect(self._change_speed)
 
+        c = self._layer_controls
+        c.filter_changed.connect(self._viewport.set_layer_filter)
+        c.depth_coloring_toggled.connect(self._viewport.set_depth_coloring)
+
+        self._issues_panel.issue_selected.connect(self._go_to_issue)
+
     # --- carregamento ---
 
     def open_file(self) -> None:
@@ -102,16 +123,21 @@ class MainWindow(QMainWindow):
 
         result = parse_gcode(text)
         self._file_label.setText(str(path))
-        self._warnings = result.warnings
+        self._source_lines = text.splitlines()
+        self._issues = result.issues
+        self._issues_panel.show_issues(result.issues)
 
         if not result.moves:
             self._show_empty()
             return
 
-        self._toolpath = Toolpath(result.moves)
-        self._playback.reset(self._toolpath.total_time)
-        self._viewport.show_toolpath(self._toolpath)
-        self._stats_panel.show_program(compute_stats(self._toolpath), result.warnings)
+        toolpath = Toolpath(result.moves)
+        levels = depth_levels(toolpath)
+        self._toolpath = toolpath
+        self._layer_controls.set_levels(levels)
+        self._playback.reset(toolpath.total_time)
+        self._viewport.show_toolpath(toolpath, levels)
+        self._stats_panel.show_program(compute_stats(toolpath))
         self._player.set_enabled(True)
         self._refresh()
 
@@ -119,8 +145,26 @@ class MainWindow(QMainWindow):
         self._toolpath = None
         self._viewport.clear()
         self._stats_panel.clear()
+        self._layer_controls.set_levels([])
         self._player.set_enabled(False)
         self._player.set_status("Nenhum movimento encontrado no arquivo.")
+
+    # --- validação ---
+
+    def _go_to_issue(self, line: int) -> None:
+        if 1 <= line <= len(self._source_lines):
+            self._issues_panel.show_source(line, self._source_lines[line - 1].strip())
+
+        if self._toolpath is None:
+            return
+        t = self._toolpath.time_at_line(line)
+        if t is None:
+            self._player.set_status(f"Nenhum movimento a partir da linha {line}.")
+            return
+
+        self._playback.pause()
+        self._playback.seek(t)
+        self._refresh()
 
     # --- ações de reprodução ---
 
@@ -192,6 +236,6 @@ class MainWindow(QMainWindow):
             f"tempo {format_duration(pb.elapsed)} / {format_duration(pb.total_time)}   |   "
             f"velocidade {pb.speed:.1f}x"
         )
-        if self._warnings:
-            text += f"   |   {len(self._warnings)} aviso(s)"
+        if self._issues:
+            text += f"   |   {len(self._issues)} problema(s)"
         return text
