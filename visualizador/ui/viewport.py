@@ -14,7 +14,7 @@ from config import (
 from core.layers import layer_indices
 from core.toolpath import Snapshot, Toolpath, interleave
 from ui.theme import (
-    BACKGROUND, BRIGHT_CUT, BRIGHT_RAPID, CUT_DEPTH_ALPHA, DEPTH_STOPS,
+    ARC_HEAD_COLOR, BACKGROUND, BRIGHT_CUT, BRIGHT_RAPID, CUT_DEPTH_ALPHA, DEPTH_STOPS,
     DIM_CUT, DIM_RAPID, GRID_COLOR, HEAD_COLOR,
 )
 
@@ -121,7 +121,11 @@ class ToolpathView(gl.GLViewWidget):
         self._set_item_colors(self._cut_item, colors, self._is_cut)
         self._set_item_colors(self._rapid_item, colors, ~self._is_cut)
         if self._head is not None:
-            self._head.setData(pos=snapshot.head.reshape(1, 3))
+            color = ARC_HEAD_COLOR if snapshot.active else HEAD_COLOR
+            self._head.setData(
+                pos=snapshot.head.reshape(1, 3),
+                color=np.asarray([color], dtype=float),
+            )
 
     @staticmethod
     def _set_item_colors(item, colors: np.ndarray, mask: np.ndarray) -> None:

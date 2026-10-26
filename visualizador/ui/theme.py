@@ -9,6 +9,7 @@ BRIGHT_CUT = (0.2, 0.8, 1.0, 1.0)
 DIM_RAPID = (1.0, 0.35, 0.35, 0.2)
 BRIGHT_RAPID = (1.0, 0.35, 0.35, 0.8)
 HEAD_COLOR = (1.0, 0.85, 0.2, 1.0)
+ARC_HEAD_COLOR = (1.0, 0.45, 0.1, 1.0)  # cabeça com processo ligado
 ERROR_COLOR = "#ff6b6b"
 WARNING_COLOR = "#f0b429"
 CUT_DEPTH_ALPHA = 0.35  # opacidade dos cortes apagados na coloração por profundidade
