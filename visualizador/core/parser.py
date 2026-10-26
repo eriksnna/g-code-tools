@@ -1,11 +1,12 @@
-"""Interpretação de G-code. Não depende de Qt nem de numpy."""
+"""Interpretação de movimentos G-code. Não depende de Qt nem de numpy."""
 from __future__ import annotations
 
 import math
-import re
 from dataclasses import dataclass, field
 
 from config import ARC_STEP_DEG, DEFAULT_FEED, INCH_TO_MM, MACHINE_LIMITS
+# re-exportados: quem importa de core.parser continua funcionando
+from core.lexer import ERROR, WARNING, GCodeError, Issue, clean_line, parse_words
 
 Point = tuple[float, float, float]
 Limits = dict[str, tuple[float, float]]
@@ -19,18 +20,13 @@ G_ABSOLUTE = 90
 G_INCREMENTAL = 91
 MOTION_ARCS = (G_CW_ARC, G_CCW_ARC)
 AXES = "XYZ"
-
-ERROR = "erro"
-WARNING = "aviso"
 BOUNDS_TOLERANCE = 1e-6
-
-WORD_RE = re.compile(r"([A-Z])\s*([-+]?(?:\d+\.?\d*|\.\d+))")
-PAREN_COMMENT_RE = re.compile(r"\(.*?\)")
 TWO_PI = 2 * math.pi
 
-
-class GCodeError(ValueError):
-    """Linha de G-code que não pode ser interpretada."""
+__all__ = [
+    "ERROR", "WARNING", "Issue", "Move", "ParseResult", "arc_points",
+    "clean_line", "parse_gcode", "parse_words",
+]
 
 
 @dataclass(frozen=True)
@@ -39,8 +35,8 @@ class Move:
     start: Point
     end: Point
     is_cut: bool
-    feed: float   # mm/min programado; relevante apenas para cortes
-    line: int = 0 # linha de origem no arquivo, começando em 1
+    feed: float    # mm/min programado; relevante apenas para cortes
+    line: int = 0  # linha de origem no arquivo, começando em 1
 
     @property
     def length(self) -> float:
@@ -48,30 +44,10 @@ class Move:
 
 
 @dataclass(frozen=True)
-class Issue:
-    """Problema encontrado no arquivo, associado a uma linha."""
-    line: int
-    severity: str  # ERROR ou WARNING
-    message: str
-
-
-@dataclass(frozen=True)
 class ParseResult:
     moves: list[Move] = field(default_factory=list)
     issues: list[Issue] = field(default_factory=list)
     commands: dict[str, int] = field(default_factory=dict)
-
-
-def clean_line(raw: str) -> str:
-    """Remove comentários, espaços das pontas e padroniza em maiúsculas."""
-    without_parens = PAREN_COMMENT_RE.sub("", raw)
-    without_semicolon = without_parens.split(";", 1)[0]
-    return without_semicolon.strip().upper()
-
-
-def parse_words(line: str) -> list[tuple[str, float]]:
-    """'G20 G1 X10 Y-2.5' -> [('G', 20.0), ('G', 1.0), ('X', 10.0), ('Y', -2.5)]"""
-    return [(letter, float(value)) for letter, value in WORD_RE.findall(line)]
 
 
 def parse_gcode(text: str, default_feed: float = DEFAULT_FEED,
