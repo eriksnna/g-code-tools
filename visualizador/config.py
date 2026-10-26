@@ -44,3 +44,9 @@ MAX_EXPANDED_LINES = 100_000   # limite de segurança para o programa expandido
 
 # Dialeto padrão de G-code (chave em core/dialect.py). Troque para o perfil da sua máquina.
 DEFAULT_DIALECT = "generico"
+
+# Modos de processo
+DEFAULT_MODE = "usinagem"          # "usinagem" ou "deposicao"
+BEAD_WIDTH_MM = 6.0                # largura do cordão (padrão, editável na interface)
+BEAD_HEIGHT_MM = 3.0               # altura do cordão por camada
+DEPOSIT_DENSITY_G_CM3 = 7.85       # aço carbono; ajuste para o seu arame
