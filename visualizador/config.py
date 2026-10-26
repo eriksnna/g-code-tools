@@ -41,3 +41,6 @@ LAYER_DECIMALS = 3
 # Expansão de sub-rotinas
 MAX_CALL_DEPTH = 10            # níveis de M98 aninhados antes de considerar recursão
 MAX_EXPANDED_LINES = 100_000   # limite de segurança para o programa expandido
+
+# Dialeto padrão de G-code (chave em core/dialect.py). Troque para o perfil da sua máquina.
+DEFAULT_DIALECT = "generico"

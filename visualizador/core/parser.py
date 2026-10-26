@@ -1,10 +1,16 @@
-"""Interpretação de movimentos G-code. Não depende de Qt nem de numpy."""
+"""Interpretação de movimentos G-code. Não depende de Qt nem de numpy.
+
+Sub-rotinas e variáveis já foram expandidas por core.expander. Os códigos de
+processo (M-codes) são traduzidos pelo dialeto escolhido, não fixados aqui.
+"""
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
 
-from config import ARC_STEP_DEG, DEFAULT_FEED, INCH_TO_MM, MACHINE_LIMITS
+from config import ARC_STEP_DEG, DEFAULT_DIALECT, DEFAULT_FEED, INCH_TO_MM, MACHINE_LIMITS
+from core.dialect import Dialect, get_dialect
+from core.expander import expand_program
 # re-exportados: quem importa de core.parser continua funcionando
 from core.lexer import ERROR, WARNING, GCodeError, Issue, clean_line, parse_words
 
@@ -15,6 +21,7 @@ G_RAPID = 0
 G_LINEAR = 1
 G_CW_ARC = 2
 G_CCW_ARC = 3
+G_DWELL = 4
 G_UNITS = {20: INCH_TO_MM, 21: 1.0}
 G_ABSOLUTE = 90
 G_INCREMENTAL = 91
@@ -31,12 +38,15 @@ __all__ = [
 
 @dataclass(frozen=True)
 class Move:
-    """Um trecho de movimento linear. Arcos viram vários Move."""
+    """Um trecho de movimento. Arcos viram vários Move; G04 vira um Move de espera."""
     start: Point
     end: Point
     is_cut: bool
-    feed: float    # mm/min programado; relevante apenas para cortes
-    line: int = 0  # linha de origem no arquivo, começando em 1
+    feed: float        # mm/min programado; relevante apenas para cortes
+    line: int = 0      # linha de origem no arquivo, começando em 1
+    active: bool = False  # processo ligado (spindle, arco, tocha) durante o movimento
+    dwell: float = 0.0    # segundos de espera (G04); quando > 0, start == end
+    rapid: bool = False   # G0: deslocamento rápido, na velocidade de avanço rápido
 
     @property
     def length(self) -> float:
@@ -47,18 +57,24 @@ class Move:
 class ParseResult:
     moves: list[Move] = field(default_factory=list)
     issues: list[Issue] = field(default_factory=list)
-    commands: dict[str, int] = field(default_factory=dict)
+    commands: dict[str, int] = field(default_factory=dict)  # G0 a G4 executados
 
 
 def parse_gcode(text: str, default_feed: float = DEFAULT_FEED,
-                limits: Limits = MACHINE_LIMITS) -> ParseResult:
-    """Lê o texto inteiro e devolve os movimentos e os problemas encontrados."""
-    interpreter = GCodeInterpreter(default_feed, limits)
-    for lineno, raw in enumerate(text.splitlines(), start=1):
-        interpreter.run_line(clean_line(raw), lineno)
+                limits: Limits = MACHINE_LIMITS,
+                dialect: Dialect | None = None) -> ParseResult:
+    """Expande o programa e interpreta a sequência resultante."""
+    dialect = dialect or get_dialect(DEFAULT_DIALECT)
+    expansion = expand_program(text)
+
+    interpreter = GCodeInterpreter(default_feed, limits, dialect)
+    for source in expansion.lines:
+        interpreter.run_line(source.text, source.line)
+
+    issues = sorted([*expansion.issues, *interpreter.issues], key=lambda issue: issue.line)
     return ParseResult(
         moves=interpreter.moves,
-        issues=interpreter.issues,
+        issues=issues,
         commands=interpreter.commands,
     )
 
@@ -94,18 +110,21 @@ def _signed_sweep(delta: float, clockwise: bool) -> float:
 
 
 class GCodeInterpreter:
-    """Mantém o estado modal da máquina enquanto percorre as linhas."""
+    """Mantém o estado modal da máquina enquanto percorre as linhas expandidas."""
 
-    def __init__(self, default_feed: float, limits: Limits = MACHINE_LIMITS) -> None:
+    def __init__(self, default_feed: float, limits: Limits = MACHINE_LIMITS,
+                 dialect: Dialect | None = None) -> None:
         self.position: Point = (0.0, 0.0, 0.0)
         self.absolute = True
         self.unit_scale = 1.0
         self.motion = G_RAPID
         self.feed = default_feed
         self.limits = limits
+        self.dialect = dialect or get_dialect(DEFAULT_DIALECT)
+        self.process_active = False
         self.moves: list[Move] = []
         self.issues: list[Issue] = []
-        self.commands = {"G0": 0, "G1": 0, "G2": 0, "G3": 0}
+        self.commands = {"G0": 0, "G1": 0, "G2": 0, "G3": 0, "G4": 0}
 
         self._lineno = 0
         self._feed_programmed = False
@@ -126,18 +145,25 @@ class GCodeInterpreter:
         if not words:
             return
 
-        # Todos os G da linha são aplicados primeiro, na ordem em que aparecem
-        for letter, value in words:
-            if letter == "G":
-                self._apply_g_code(int(value))
+        g_codes = [int(value) for letter, value in words if letter == "G"]
+        m_codes = [int(value) for letter, value in words if letter == "M"]
+        params = {letter: value for letter, value in words if letter not in "GM"}
 
-        axis_words = {letter: value for letter, value in words if letter != "G"}
-        if "F" in axis_words:
-            self.feed = axis_words["F"] * self.unit_scale
+        # G e M são aplicados primeiro, na ordem em que aparecem na linha
+        for code in g_codes:
+            self._apply_g_code(code)
+        for code in m_codes:
+            self._apply_m_code(code)
+
+        if "F" in params:
+            self.feed = params["F"] * self.unit_scale
             self._feed_programmed = True
 
-        if any(axis in axis_words for axis in AXES):
-            self._move(axis_words)
+        if G_DWELL in g_codes:
+            self._dwell(params.get("P", 0.0))
+
+        if any(axis in params for axis in AXES):
+            self._move(params)
 
     def _apply_g_code(self, code: int) -> None:
         if code in (G_RAPID, G_LINEAR, *MOTION_ARCS):
@@ -148,7 +174,14 @@ class GCodeInterpreter:
             self.absolute = True
         elif code == G_INCREMENTAL:
             self.absolute = False
-        # demais códigos G ainda não são interpretados
+        # G04 é tratado em _execute, pois depende do parâmetro P
+
+    def _apply_m_code(self, code: int) -> None:
+        """M-codes de processo são definidos pelo dialeto; os demais são ignorados."""
+        if code in self.dialect.process_on:
+            self.process_active = True
+        elif code in self.dialect.process_off:
+            self.process_active = False
 
     def _move(self, words: dict[str, float]) -> None:
         self.commands[f"G{self.motion}"] += 1
@@ -169,7 +202,23 @@ class GCodeInterpreter:
         x, y, z = self.position
         return (resolve("X", x), resolve("Y", y), resolve("Z", z))
 
-    # --- movimentos ---
+    # --- movimentos e esperas ---
+
+    def _dwell(self, duration: float) -> None:
+        """G04: espera no mesmo ponto. A unidade do P vem do dialeto."""
+        seconds = duration * self.dialect.dwell_unit
+        if seconds <= 0:
+            return
+        self.commands["G4"] += 1
+        self.moves.append(Move(
+            start=self.position,
+            end=self.position,
+            is_cut=False,
+            feed=self.feed,
+            line=self._lineno,
+            active=self.process_active,
+            dwell=seconds,
+        ))
 
     def _line(self, end: Point) -> None:
         if end == self.position:
@@ -178,7 +227,11 @@ class GCodeInterpreter:
         if is_cut:
             self._check_feed()
         self._check_bounds([end])
-        self.moves.append(Move(self.position, end, is_cut, self.feed, self._lineno))
+        self.moves.append(Move(
+            self.position, end, is_cut, self.feed, self._lineno,
+            active=self.process_active,
+            rapid=self.motion == G_RAPID,
+        ))
 
     def _arc(self, end: Point, words: dict[str, float]) -> None:
         if "R" in words:
@@ -195,7 +248,10 @@ class GCodeInterpreter:
 
         previous = start
         for point in points:
-            self.moves.append(Move(previous, point, True, self.feed, self._lineno))
+            self.moves.append(Move(
+                previous, point, True, self.feed, self._lineno,
+                active=self.process_active,
+            ))
             previous = point
 
     # --- validação ---

@@ -68,6 +68,6 @@ def test_commands_are_counted_per_line_not_per_segment():
     result = parse_gcode("G0 Z5\nG1 Z-1 F100\nG2 X10 Y0 I5 J0 F100")
     stats = compute_stats(Toolpath(result.moves), result.commands)
 
-    assert result.commands == {"G0": 1, "G1": 1, "G2": 1, "G3": 0}
+    assert result.commands == {"G0": 1, "G1": 1, "G2": 1, "G3": 0, "G4": 0}
     assert stats.commands == result.commands
     assert stats.total_moves > 3  # o arco vira vários segmentos
