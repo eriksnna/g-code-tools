@@ -1,4 +1,4 @@
-"""Janela principal: liga a interface ao modelo e ao estado de reprodução."""
+"""Janela principal: liga a interface ao modo de processo, ao modelo e à reprodução."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,12 +12,15 @@ from PySide6.QtWidgets import (
 
 from config import APP_TITLE, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
 from core.layers import depth_levels
-from core.parser import ERROR, Issue, parse_gcode
+from core.lexer import Issue
+from core.modes import apply_mode
+from core.parser import parse_gcode
 from core.playback import Playback
 from core.stats import compute_stats, format_duration
 from core.toolpath import Snapshot, Toolpath
 from ui.issues_panel import IssuesPanel
 from ui.layer_controls import LayerControls
+from ui.mode_controls import ModeControls
 from ui.player_bar import PlayerBar
 from ui.stats_panel import StatsPanel
 from ui.theme import DARK_QSS
@@ -33,6 +36,8 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(str(ICON_PATH)))
         self.setStyleSheet(DARK_QSS)
 
+        self._path: Path | None = None
+        self._text: str | None = None
         self._toolpath: Toolpath | None = None
         self._issues: list[Issue] = []
         self._source_lines: list[str] = []
@@ -41,6 +46,7 @@ class MainWindow(QMainWindow):
         self._open_button = QPushButton("Abrir G-code...")
         self._file_label = QLabel("Nenhum arquivo carregado")
         self._file_label.setObjectName("fileLabel")
+        self._mode_controls = ModeControls()
         self._layer_controls = LayerControls()
         self._viewport = ToolpathView()
         self._stats_panel = StatsPanel()
@@ -71,16 +77,15 @@ class MainWindow(QMainWindow):
         header.setSpacing(10)
         header.addWidget(self._open_button)
         header.addWidget(self._file_label, 1)
+        header.addWidget(self._mode_controls)
         header.addWidget(self._layer_controls)
 
-        # painel de estatísticas dentro de uma área com rolagem: nunca é comprimido
         stats_scroll = QScrollArea()
         stats_scroll.setWidgetResizable(True)
         stats_scroll.setFrameShape(QFrame.Shape.NoFrame)
         stats_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         stats_scroll.setWidget(self._stats_panel)
 
-        # lateral redimensionável: o usuário divide o espaço entre estatísticas e validação
         side = QSplitter(Qt.Orientation.Vertical)
         side.addWidget(stats_scroll)
         side.addWidget(self._issues_panel)
@@ -88,7 +93,6 @@ class MainWindow(QMainWindow):
         side.setStretchFactor(1, 1)
         side.setChildrenCollapsible(False)
 
-        # divisor horizontal entre o viewport 3D e a lateral
         self._viewport.setMinimumSize(400, 300)
         body = QSplitter(Qt.Orientation.Horizontal)
         body.addWidget(self._viewport)
@@ -104,6 +108,7 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self) -> None:
         self._open_button.clicked.connect(lambda _checked=False: self.open_file())
+        self._mode_controls.changed.connect(self._reload)
 
         p = self._player
         p.play_clicked.connect(self._toggle_play)
@@ -128,30 +133,42 @@ class MainWindow(QMainWindow):
             self.load_file(Path(path))
 
     def load_file(self, path: Path) -> None:
-        self._pause()
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
         except OSError as err:
             self._player.set_status(f"Erro ao abrir arquivo: {err}")
             return
-
-        result = parse_gcode(text)
+        self._path = path
+        self._text = text
         self._file_label.setText(str(path))
-        self._source_lines = text.splitlines()
-        self._issues = result.issues
-        self._issues_panel.show_issues(result.issues)
+        self._reload()
 
-        if not result.moves:
+    def _reload(self) -> None:
+        """Reinterpreta o arquivo com o modo atual. Chamado ao abrir e ao trocar o modo."""
+        if self._text is None:
+            return
+        self._pause()
+
+        mode = self._mode_controls.current_mode()
+        result = parse_gcode(self._text)
+        moves = apply_mode(result.moves, mode)
+
+        self._source_lines = self._text.splitlines()
+        self._issues = sorted([*result.issues, *mode.validate(moves)], key=lambda i: i.line)
+        self._issues_panel.show_issues(self._issues)
+
+        if not moves:
             self._show_empty()
             return
 
-        toolpath = Toolpath(result.moves)
+        toolpath = Toolpath(moves)
         levels = depth_levels(toolpath)
         self._toolpath = toolpath
         self._layer_controls.set_levels(levels)
         self._playback.reset(toolpath.total_time)
         self._viewport.show_toolpath(toolpath, levels)
         self._stats_panel.show_program(compute_stats(toolpath, result.commands))
+        self._stats_panel.show_mode(mode.name, mode.cards(toolpath))
         self._player.set_enabled(True)
         self._refresh()
 
@@ -250,6 +267,8 @@ class MainWindow(QMainWindow):
             f"tempo {format_duration(pb.elapsed)} / {format_duration(pb.total_time)}   |   "
             f"velocidade {pb.speed:.1f}x"
         )
+        if snapshot.active:
+            text += "   |   processo ativo"
         if self._issues:
             text += f"   |   {len(self._issues)} problema(s)"
         return text

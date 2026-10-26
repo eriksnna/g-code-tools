@@ -7,6 +7,8 @@ from PySide6.QtWidgets import (
 
 from core.stats import ProgramStats, format_duration, format_length
 
+from core.modes.base import ModeCard
+
 PANEL_MIN_WIDTH = 240
 PROGRESS_STEPS = 1000
 EMPTY_VALUE = "—"
@@ -67,6 +69,13 @@ def _section_title(text: str) -> QLabel:
     label.setObjectName("sectionTitle")
     return label
 
+def _clear_layout(layout) -> None:
+    while layout.count():
+        item = layout.takeAt(0)
+        if item.widget() is not None:
+            item.widget().deleteLater()
+        elif item.layout() is not None:
+            _clear_layout(item.layout())
 
 def _card_grid(cards: list[StatCard]) -> QGridLayout:
     """Organiza os cartões em duas colunas; cartões 'wide' ocupam a linha inteira."""
@@ -113,6 +122,9 @@ class StatsPanel(QFrame):
             "remaining": StatCard("Restante"),
         }
 
+        self._mode_title = _section_title("Modo")
+        self._mode_box = QVBoxLayout()
+
         self._build_layout()
         self.clear()
 
@@ -124,6 +136,9 @@ class StatsPanel(QFrame):
         layout.addWidget(_section_title("Resumo do programa"))
         layout.addLayout(_card_grid(list(self._program.values())))
 
+        layout.addWidget(self._mode_title)
+        layout.addLayout(self._mode_box)
+
         layout.addWidget(_section_title("Simulação"))
         layout.addWidget(self._progress_bar)
         layout.addLayout(_card_grid(list(self._progress.values())))
@@ -132,6 +147,8 @@ class StatsPanel(QFrame):
     # --- atualização do estado exibido ---
 
     def clear(self) -> None:
+        _clear_layout(self._mode_box)
+        self._mode_title.setVisible(False)
         for card in (*self._program.values(), *self._progress.values()):
             card.set_value(EMPTY_VALUE)
         self._progress_bar.setValue(0)
@@ -165,3 +182,16 @@ class StatsPanel(QFrame):
         g["current"].set_value(f"{done} / {count}")
         g["elapsed"].set_value(format_duration(elapsed))
         g["remaining"].set_value(format_duration(max(0.0, total_time - elapsed)))
+
+    def show_mode(self, title: str, cards: list[ModeCard]) -> None:
+        _clear_layout(self._mode_box)
+        self._mode_title.setText(f"Modo: {title}".upper())
+        self._mode_title.setVisible(True)
+        if not cards:
+            return
+        stat_cards = []
+        for card in cards:
+            widget = StatCard(card.title)
+            widget.set_value(card.value, card.detail)
+            stat_cards.append(widget)
+        self._mode_box.addLayout(_card_grid(stat_cards))
