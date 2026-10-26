@@ -329,3 +329,25 @@ Novidades:
 
 -  O cartão agora mostra o número de comandos de movimento;
 -  O detalhe mostra a divisão por tipo, como ``G0 1 | G1 1 | G2 1``
+
+### 03/10 — sábado - Adição de sub-rotinas e separação do parser (~5h)
+
+1. **Expansão de sub-rotinas, repetições (L) e variáveis (#n)**
+
+### 06/10 — terça-feira a 07/10 — quarta-feira - Adição de dialetos de G-code e preparação para adicionar modos de processos de usinagem e deposição (WAAM) (~7h)
+
+1. **Interpretação de dialetos**
+
+- Agora o programa tem um modo de interpretação separado para usinagem e deposição (WAAM);
+- Suporte a códigos de processo (M-codes);
+
+2. **Integração e compatibilidade**
+   
+- Integra expander ao parser; adiciona dialect, active, dwell e rapid
+
+### 09/10 — sexta-feira a 11/10 — domingo - Integração dos modos na interface: seletor, cartões e validação (~13h)
+
+1. **Agora é possível selecionar o modo de processo diretamente na interface**
+
+- Painel de estatística diferente para cada modo;
+- Adição de configurações adicionais para o modo de deposição (WAAM);
