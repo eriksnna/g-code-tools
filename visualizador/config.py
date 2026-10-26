@@ -37,3 +37,7 @@ MACHINE_LIMITS = {"X": (0.0, 300.0), "Y": (0.0, 200.0), "Z": (-100.0, 100.0)}
 
 # Camadas: casas decimais usadas para agrupar profundidades iguais
 LAYER_DECIMALS = 3
+
+# Expansão de sub-rotinas
+MAX_CALL_DEPTH = 10            # níveis de M98 aninhados antes de considerar recursão
+MAX_EXPANDED_LINES = 100_000   # limite de segurança para o programa expandido
