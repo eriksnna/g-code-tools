@@ -5,9 +5,9 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from core.layers import depth_levels
 from core.toolpath import Toolpath
 
-from core.layers import depth_levels
 
 @dataclass(frozen=True)
 class ProgramStats:
@@ -21,12 +21,16 @@ class ProgramStats:
     rapid_length: float    # mm
     layer_count: int
     size: tuple[float, float, float]  # dimensões da peça, mm (apenas trechos de corte)
-    commands: dict[str, int] = field(default_factory=dict)  # G0, G1, G2, G3
+    dwell_time: float = 0.0    # segundos de espera (G04)
+    dwell_count: int = 0       # número de esperas
+    active_time: float = 0.0   # segundos com o processo ligado
+    commands: dict[str, int] = field(default_factory=dict)  # G0 a G4
 
 
 def compute_stats(toolpath: Toolpath, commands: dict[str, int] | None = None) -> ProgramStats:
     cut = toolpath.is_cut
-    rapid = ~cut
+    dwell = toolpath.is_dwell
+    rapid = ~cut & ~dwell
     lengths = np.linalg.norm(toolpath.ends - toolpath.starts, axis=1)
     durations = toolpath.durations
 
@@ -41,6 +45,9 @@ def compute_stats(toolpath: Toolpath, commands: dict[str, int] | None = None) ->
         rapid_length=float(lengths[rapid].sum()),
         layer_count=_count_layers(toolpath),
         size=_cut_extent(toolpath),
+        dwell_time=float(durations[dwell].sum()),
+        dwell_count=int(dwell.sum()),
+        active_time=float(durations[toolpath.active].sum()),
         commands=dict(commands or {}),
     )
 

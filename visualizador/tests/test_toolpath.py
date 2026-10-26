@@ -9,7 +9,7 @@ def make_path():
     return Toolpath(
         [
             Move((0, 0, 0), (60, 0, 0), is_cut=True, feed=600.0),      # 6 s
-            Move((60, 0, 0), (0, 0, 0), is_cut=False, feed=0.0),       # 0,6 s com 6000 mm/min
+            Move((60, 0, 0), (0, 0, 0), is_cut=False, feed=0.0, rapid=True),   # 0,6 s com 6000 mm/min
         ],
         rapid_feed=6000.0,
     )

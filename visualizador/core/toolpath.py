@@ -23,9 +23,10 @@ def interleave(starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
 @dataclass(frozen=True)
 class Snapshot:
     """Estado da simulação em um instante."""
-    head: np.ndarray  # posição da ferramenta, shape (3,)
-    done: int         # movimentos concluídos
-    started: int      # movimentos iniciados, incluindo o em curso
+    head: np.ndarray        # posição da ferramenta, shape (3,)
+    done: int               # movimentos concluídos
+    started: int            # movimentos iniciados, incluindo o em curso
+    active: bool = False    # processo ligado no instante
 
 
 class Toolpath:
@@ -38,13 +39,20 @@ class Toolpath:
         self.starts = np.array([m.start for m in moves], dtype=float)
         self.ends = np.array([m.end for m in moves], dtype=float)
         self.is_cut = np.array([m.is_cut for m in moves], dtype=bool)
-        self.lines = np.array([m.line for m in moves], dtype=int)  # não decrescente
+        self.active = np.array([m.active for m in moves], dtype=bool)
+        self.dwell = np.array([m.dwell for m in moves], dtype=float)
+        self.is_dwell = self.dwell > 0
+        self.rapid = np.array([m.rapid for m in moves], dtype=bool)
+        # linha de origem; pode não ser crescente quando há sub-rotinas
+        self.lines = np.array([m.line for m in moves], dtype=int)
 
-        feeds = np.array([m.feed if m.is_cut else rapid_feed for m in moves], dtype=float)
+        feeds = np.array([rapid_feed if m.rapid else m.feed for m in moves], dtype=float)
         feeds = np.maximum(feeds, MIN_FEED)
         lengths = np.array([m.length for m in moves], dtype=float)
+        travel = lengths / feeds * SECONDS_PER_MINUTE
 
-        self.durations = lengths / feeds * SECONDS_PER_MINUTE
+        # esperas duram o tempo programado; movimentos, distância / velocidade
+        self.durations = np.where(self.is_dwell, self.dwell, travel)
         self.cum_end = np.cumsum(self.durations)
         self.cum_start = self.cum_end - self.durations
 
@@ -64,17 +72,25 @@ class Toolpath:
         """Estado da ferramenta no instante t, em segundos."""
         k = int(np.searchsorted(self.cum_end, t, side="right"))
         if k >= self.count:
-            return Snapshot(head=self.ends[-1].copy(), done=self.count, started=self.count)
+            return Snapshot(head=self.ends[-1].copy(), done=self.count,
+                            started=self.count, active=False)
 
         begin = self.cum_start[k]
         progress = (t - begin) / self.durations[k]
         head = self.starts[k] + progress * (self.ends[k] - self.starts[k])
         started = k + 1 if t > begin else k
-        return Snapshot(head=head, done=k, started=started)
+        return Snapshot(head=head, done=k, started=started, active=bool(self.active[k]))
 
     def time_at_line(self, line: int) -> float | None:
-        """Instante em que começa o primeiro movimento a partir da linha dada."""
-        index = int(np.searchsorted(self.lines, line, side="left"))
-        if index >= self.count:
+        """Instante do primeiro movimento escrito na linha dada.
+
+        Com sub-rotinas, a mesma linha pode executar várias vezes; usa-se a primeira.
+        Se nenhum movimento vem dessa linha, usa o próximo escrito depois dela.
+        """
+        exact = np.flatnonzero(self.lines == line)
+        if exact.size:
+            return float(self.cum_start[exact[0]])
+        later = np.flatnonzero(self.lines > line)
+        if later.size == 0:
             return None
-        return float(self.cum_start[index])
+        return float(self.cum_start[later[0]])

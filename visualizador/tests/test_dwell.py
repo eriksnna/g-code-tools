@@ -43,3 +43,18 @@ def test_rapid_flag_marks_g0_moves():
 def test_g04_with_zero_or_missing_p_is_ignored():
     assert parse_gcode("G04 P0").moves == []
     assert parse_gcode("G04").moves == []
+
+def test_dwell_time_is_separated_from_rapid_and_cut():
+    result = parse_gcode("G1 X10 F600\nG04 P4", dialect=ARC_SECONDS)
+    stats = compute_stats(Toolpath(result.moves), result.commands)
+    assert stats.dwell_time == pytest.approx(4.0)
+    assert stats.dwell_count == 1
+    assert stats.cut_time == pytest.approx(1.0)
+    assert stats.rapid_time == 0
+
+
+def test_active_time_sums_moves_and_dwells_with_process_on():
+    text = "M8\nG1 X10 F600\nG04 P2\nM9\nG1 X20 F600"
+    result = parse_gcode(text, dialect=ARC_SECONDS)
+    stats = compute_stats(Toolpath(result.moves), result.commands)
+    assert stats.active_time == pytest.approx(1.0 + 2.0)

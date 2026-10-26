@@ -12,7 +12,7 @@ def make_path():
             Move((0, 0, 0), (10, 0, 0), is_cut=True, feed=600.0),       # 1 s, 10 mm
             Move((10, 0, 0), (10, 0, -5), is_cut=True, feed=600.0),     # 0,5 s, 5 mm
             Move((10, 0, -5), (0, 0, -5), is_cut=True, feed=600.0),     # 1 s, 10 mm
-            Move((0, 0, -5), (0, 0, 0), is_cut=False, feed=0.0),        # 1 s, 5 mm
+            Move((0, 0, -5), (0, 0, 0), is_cut=False, feed=0.0, rapid=True),        # 1 s, 5 mm
         ],
         rapid_feed=300.0,
     )
@@ -46,7 +46,7 @@ def test_size_ignores_rapid_moves():
     path = Toolpath(
         [
             Move((0, 0, 0), (10, 10, 0), is_cut=True, feed=600.0),
-            Move((10, 10, 0), (500, 500, 0), is_cut=False, feed=0.0),
+            Move((10, 10, 0), (500, 500, 0), is_cut=False, feed=0.0, rapid=True),
         ],
         rapid_feed=5000.0,
     )
