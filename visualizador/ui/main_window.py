@@ -18,6 +18,7 @@ from core.parser import parse_gcode
 from core.playback import Playback
 from core.stats import compute_stats, format_duration
 from core.toolpath import Snapshot, Toolpath
+from core.file_safety import UnsafeFileError, check_file_size, check_line_lengths
 from ui.dialect_controls import DialectControls
 from ui.gcode_editor import GCodeEditor
 from ui.issues_panel import IssuesPanel
@@ -194,7 +195,7 @@ class MainWindow(QMainWindow):
             return
         self._path = None
         self._text = ""
-        self._saved_text = None
+        self._saved_text = ""
         self._file_label.setText("Novo programa (não salvo)")
         self._editor.set_text("")
         self._editor_toggle.setChecked(True)
@@ -205,7 +206,12 @@ class MainWindow(QMainWindow):
         if not self._confirm_discard_changes():
             return
         try:
+            check_file_size(path)
             text = path.read_text(encoding="utf-8", errors="ignore")
+            check_line_lengths(text)
+        except UnsafeFileError as err:
+            self._player.set_status(f"Arquivo recusado: {err}")
+            return
         except OSError as err:
             self._player.set_status(f"Erro ao abrir arquivo: {err}")
             return
