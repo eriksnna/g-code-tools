@@ -24,7 +24,9 @@ from ui.gcode_editor import GCodeEditor
 from ui.issues_panel import IssuesPanel
 from ui.layer_controls import LayerControls
 from ui.mode_controls import ModeControls
-from ui.machine_controls import MachineControls
+from core.machine_profile import MachineProfile
+from core.profile_store import load_profiles, save_profiles
+from ui.settings_dialog import SettingsDialog
 from ui.player_bar import PlayerBar
 from ui.stats_panel import StatsPanel
 from ui.theme import DARK_QSS
@@ -48,13 +50,15 @@ class MainWindow(QMainWindow):
         self._issues: list[Issue] = []
         self._source_lines: list[str] = []
         self._playback = Playback()
+        self._profiles, _active_name = load_profiles()
+        self._profile = next((p for p in self._profiles if p.name == _active_name), self._profiles[0])
 
         self._open_button = QPushButton("Abrir G-code...")
         self._file_label = QLabel("Nenhum arquivo carregado")
         self._file_label.setObjectName("fileLabel")
         self._mode_controls = ModeControls()
         self._dialect_controls = DialectControls()
-        self._machine_controls = MachineControls()
+        self._settings_button = QPushButton("⚙ Ajustes")
         self._editor_toggle = QPushButton("Editor")
         self._editor_toggle.setObjectName("editorToggle")
         self._editor_toggle.setCheckable(True)
@@ -95,7 +99,7 @@ class MainWindow(QMainWindow):
         header.addWidget(self._file_label, 1)
         header.addWidget(self._mode_controls)
         header.addWidget(self._dialect_controls)
-        header.addWidget(self._machine_controls)
+        header.addWidget(self._settings_button)
         header.addWidget(self._editor_toggle)
         header.addWidget(self._layer_controls)
 
@@ -151,7 +155,7 @@ class MainWindow(QMainWindow):
         self._open_button.clicked.connect(lambda _checked=False: self.open_file())
         self._mode_controls.changed.connect(self._reload)
         self._dialect_controls.changed.connect(self._reload)
-        self._machine_controls.changed.connect(self._reload)
+        self._settings_button.clicked.connect(self._open_settings)
         self._editor_toggle.toggled.connect(self._editor.setVisible)
         self._editor.apply_requested.connect(lambda _text: self._editor_toggle.setChecked(True))
         self._editor.save_requested.connect(self._save_edited_text)
@@ -188,6 +192,15 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getOpenFileName(self, "Abrir G-code", "", GCODE_FILTER)
         if path:
             self.load_file(Path(path))
+
+    def _open_settings(self) -> None:
+        """Abre a tela de Ajustes (perfis/limites, atalhos)."""
+        dialog = SettingsDialog(self, profiles=self._profiles, active_profile=self._profile)
+        dialog.exec()
+        self._profiles = dialog.profiles()
+        self._profile = dialog.current_profile()
+        save_profiles(self._profiles, self._profile.name)
+        self._reload()
 
     def _start_blank(self) -> None:
         """Começa um programa vazio direto no editor, sem arquivo de origem."""
@@ -287,7 +300,7 @@ class MainWindow(QMainWindow):
 
         mode = self._mode_controls.current_mode()
         dialect = self._dialect_controls.current_dialect()
-        limits = self._machine_controls.current_profile().limits
+        limits = self._profile.limits
         result = parse_gcode(self._text, dialect=dialect, limits=limits)
         moves = apply_mode(result.moves, mode)
 

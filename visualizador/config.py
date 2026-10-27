@@ -1,5 +1,9 @@
 """Constantes de configuração. Ajustes de máquina e de aparência ficam aqui."""
 from pathlib import Path
+import os
+
+CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home() / ".config"))) / "GCodeTools"
+PROFILES_FILE = CONFIG_DIR / "profiles.json"
 
 APP_TITLE = "Visualizador de G-Code 3D"
 WINDOW_SIZE = (1100, 800)
