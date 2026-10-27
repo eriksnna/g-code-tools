@@ -227,6 +227,10 @@ class GCodeEditor(QFrame):
         """Limpa o indicador de alteração pendente, sem mudar o texto."""
         self._text_edit.document().setModified(False)
 
+    def is_modified(self) -> bool:
+        """True se o texto do editor difere do que foi carregado ou aplicado por último."""
+        return self._text_edit.document().isModified()
+
     def goto_line(self, line: int) -> None:
         """Mostra o editor, se escondido, e vai até a linha (1-based)."""
         self.setVisible(True)

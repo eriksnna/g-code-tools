@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QElapsedTimer, QTimer
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QCloseEvent
 from PySide6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
     QScrollArea, QSplitter, QVBoxLayout, QWidget, QMessageBox, QStackedWidget,
@@ -41,6 +41,7 @@ class MainWindow(QMainWindow):
 
         self._path: Path | None = None
         self._text: str | None = None
+        self._saved_text: str | None = None  # último texto gravado em disco (ou None se nunca salvo)
         self._toolpath: Toolpath | None = None
         self._issues: list[Issue] = []
         self._source_lines: list[str] = []
@@ -171,6 +172,11 @@ class MainWindow(QMainWindow):
         self._start_panel.open_requested.connect(lambda: self.open_file())
         self._start_panel.blank_requested.connect(self._start_blank)
 
+        self._editor_status_timer = QTimer(self)
+        self._editor_status_timer.setInterval(300)
+        self._editor_status_timer.timeout.connect(self._update_title)
+        self._editor_status_timer.start()
+
     # --- carregamento ---
 
     def open_file(self) -> None:
@@ -180,8 +186,11 @@ class MainWindow(QMainWindow):
 
     def _start_blank(self) -> None:
         """Começa um programa vazio direto no editor, sem arquivo de origem."""
+        if not self._confirm_discard_changes():
+            return
         self._path = None
         self._text = ""
+        self._saved_text = None
         self._file_label.setText("Novo programa (não salvo)")
         self._editor.set_text("")
         self._editor_toggle.setChecked(True)
@@ -189,6 +198,8 @@ class MainWindow(QMainWindow):
         self._show_empty()
 
     def load_file(self, path: Path) -> None:
+        if not self._confirm_discard_changes():
+            return
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
         except OSError as err:
@@ -196,10 +207,23 @@ class MainWindow(QMainWindow):
             return
         self._path = path
         self._text = text
+        self._saved_text = text
         self._file_label.setText(str(path))
         self._editor.set_text(text)
         self._enter_workspace()
         self._reload()
+
+    def _confirm_discard_changes(self) -> bool:
+        """Pergunta antes de descartar edições não salvas. True se pode prosseguir."""
+        if not self._has_unsaved_changes():
+            return True
+        answer = QMessageBox.question(
+            self, "Descartar alterações?",
+            "Há alterações não salvas. Deseja continuar e descartá-las?",
+            QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        return answer == QMessageBox.StandardButton.Discard
 
     def _apply_edited_text(self, text: str) -> None:
         """O usuário editou o G-code no painel e pediu para reinterpretar."""
@@ -231,8 +255,19 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Erro ao salvar", f"Não foi possível salvar: {err}")
             return False
         self._apply_edited_text(text)
+        self._saved_text = text
         self._player.set_status(f"Salvo em {path}")
         return True
+    def _has_unsaved_changes(self) -> bool:
+        if self._text is None:
+            return False
+        if self._editor.is_modified():
+            return True
+        return self._text != self._saved_text
+
+    def _update_title(self) -> None:
+        mark = "● " if self._has_unsaved_changes() else ""
+        self.setWindowTitle(f"{mark}{APP_TITLE}")
 
     def _reload(self) -> None:
         """Reinterpreta o texto atual com o modo e o dialeto escolhidos."""
@@ -367,3 +402,9 @@ class MainWindow(QMainWindow):
         if self._issues:
             text += f"   |   {len(self._issues)} problema(s)"
         return text
+    
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if self._has_unsaved_changes() and not self._confirm_discard_changes():
+            event.ignore()
+            return
+        event.accept()
