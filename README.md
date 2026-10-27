@@ -372,9 +372,10 @@ Novidades:
 - Números de linha na margem;
 - Atalhos e salvar de volta no arquivo em disco (alteração)
 
-### 19/10 — segunda-feira - Implementação no modo deposição (WAAM) (~2h)
+### 19/10 — segunda-feira - Implementações no modo deposição (WAAM) (~5h)
 
 **Agora:**
 
 - Adiciona tocha e fio visual no modo deposição;
-- Configuração pode ser feita manualmente no ``visualizador/config.py``
+- Adiciona inclinação da tocha;
+- Configurações pode ser feita manualmente no ``visualizador/config.py``
