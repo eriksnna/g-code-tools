@@ -385,3 +385,14 @@ Novidades:
 1. **Adiciona tela inicial**
 
 - Opcao de abrir arquivo ou comecar do zero no editor;
+
+### 22/10 — quinta-feira - Adição de funcionalidades extras (~5h)
+
+1. **Mudanças no editor e fluxo de uso do aplicativo**
+
+**Agora:**
+
+- É possível escrever e salvar o código diretamente pelo editor do programa;
+- Mais ajustes na tocha
+
+2. **Correção de bugs gerais**

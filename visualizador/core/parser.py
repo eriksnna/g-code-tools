@@ -8,7 +8,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from config import ARC_STEP_DEG, DEFAULT_DIALECT, DEFAULT_FEED, INCH_TO_MM, MACHINE_LIMITS
+from config import ARC_STEP_DEG, DEFAULT_DIALECT, DEFAULT_FEED, INCH_TO_MM
+from core.machine_profile import DEFAULT_LIMITS as MACHINE_LIMITS
 from core.dialect import Dialect, get_dialect
 from core.expander import expand_program
 # re-exportados: quem importa de core.parser continua funcionando

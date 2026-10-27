@@ -32,9 +32,6 @@ SPEED_SLIDER_SCALE = 10   # o slider trabalha em décimos
 SEEK_STEP_FRACTION = 0.05
 TIMELINE_STEPS = 1000
 
-# Validação: área de trabalho em mm, por eixo (min, max). Ajuste para a sua máquina.
-MACHINE_LIMITS = {"X": (0.0, 300.0), "Y": (0.0, 200.0), "Z": (-100.0, 100.0)}
-
 # Camadas: casas decimais usadas para agrupar profundidades iguais
 LAYER_DECIMALS = 3
 
