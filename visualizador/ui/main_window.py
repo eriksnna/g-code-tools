@@ -18,6 +18,8 @@ from core.parser import parse_gcode
 from core.playback import Playback
 from core.stats import compute_stats, format_duration
 from core.toolpath import Snapshot, Toolpath
+from ui.dialect_controls import DialectControls
+from ui.gcode_editor import GCodeEditor
 from ui.issues_panel import IssuesPanel
 from ui.layer_controls import LayerControls
 from ui.mode_controls import ModeControls
@@ -25,7 +27,6 @@ from ui.player_bar import PlayerBar
 from ui.stats_panel import StatsPanel
 from ui.theme import DARK_QSS
 from ui.viewport import ToolpathView
-from ui.dialect_controls import DialectControls
 
 
 class MainWindow(QMainWindow):
@@ -49,8 +50,13 @@ class MainWindow(QMainWindow):
         self._file_label.setObjectName("fileLabel")
         self._mode_controls = ModeControls()
         self._dialect_controls = DialectControls()
+        self._editor_toggle = QPushButton("Editor")
+        self._editor_toggle.setObjectName("editorToggle")
+        self._editor_toggle.setCheckable(True)
         self._layer_controls = LayerControls()
         self._viewport = ToolpathView()
+        self._editor = GCodeEditor()
+        self._editor.setVisible(False)
         self._stats_panel = StatsPanel()
         self._issues_panel = IssuesPanel()
         self._player = PlayerBar()
@@ -81,6 +87,7 @@ class MainWindow(QMainWindow):
         header.addWidget(self._file_label, 1)
         header.addWidget(self._mode_controls)
         header.addWidget(self._dialect_controls)
+        header.addWidget(self._editor_toggle)
         header.addWidget(self._layer_controls)
 
         stats_scroll = QScrollArea()
@@ -96,9 +103,16 @@ class MainWindow(QMainWindow):
         side.setStretchFactor(1, 1)
         side.setChildrenCollapsible(False)
 
-        self._viewport.setMinimumSize(400, 300)
+        self._viewport.setMinimumSize(400, 200)
+        main_area = QSplitter(Qt.Orientation.Vertical)
+        main_area.addWidget(self._viewport)
+        main_area.addWidget(self._editor)
+        main_area.setStretchFactor(0, 1)
+        main_area.setStretchFactor(1, 0)
+        main_area.setChildrenCollapsible(True)
+
         body = QSplitter(Qt.Orientation.Horizontal)
-        body.addWidget(self._viewport)
+        body.addWidget(main_area)
         body.addWidget(side)
         body.setStretchFactor(0, 1)
         body.setSizes([760, 320])
@@ -113,6 +127,8 @@ class MainWindow(QMainWindow):
         self._open_button.clicked.connect(lambda _checked=False: self.open_file())
         self._mode_controls.changed.connect(self._reload)
         self._dialect_controls.changed.connect(self._reload)
+        self._editor_toggle.toggled.connect(self._editor.setVisible)
+        self._editor.apply_requested.connect(self._apply_edited_text)
 
         p = self._player
         p.play_clicked.connect(self._toggle_play)
@@ -145,22 +161,30 @@ class MainWindow(QMainWindow):
         self._path = path
         self._text = text
         self._file_label.setText(str(path))
+        self._editor.set_text(text)
+        self._reload()
+
+    def _apply_edited_text(self, text: str) -> None:
+        """O usuário editou o G-code no painel e pediu para reinterpretar."""
+        self._text = text
+        self._editor.mark_applied()
         self._reload()
 
     def _reload(self) -> None:
-        """Reinterpreta o arquivo com o modo atual. Chamado ao abrir e ao trocar o modo."""
+        """Reinterpreta o texto atual com o modo e o dialeto escolhidos."""
         if self._text is None:
             return
         self._pause()
 
         mode = self._mode_controls.current_mode()
-        self._layer_controls.setVisible(mode.key != "deposicao")
-        result = parse_gcode(self._text, dialect=self._dialect_controls.current_dialect())
+        dialect = self._dialect_controls.current_dialect()
+        result = parse_gcode(self._text, dialect=dialect)
         moves = apply_mode(result.moves, mode)
 
         self._source_lines = self._text.splitlines()
         self._issues = sorted([*result.issues, *mode.validate(moves)], key=lambda i: i.line)
         self._issues_panel.show_issues(self._issues)
+        self._layer_controls.setVisible(mode.key != "deposicao")
 
         if not moves:
             self._show_empty()

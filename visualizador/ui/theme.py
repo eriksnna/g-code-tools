@@ -84,4 +84,17 @@ QListWidget#issues {
 }
 QListWidget#issues::item { padding: 4px; }
 QListWidget#issues::item:selected { background: #343945; }
+
+QFrame#editorPanel {
+    background: #1f222a; border: 1px solid #2c303b; border-radius: 10px;
+}
+QPlainTextEdit#codeEditor {
+    background: #14161b; color: #d7dce3;
+    border: 1px solid #2c303b; border-radius: 6px;
+    selection-background-color: #3b82d0;
+}
+QLabel#editorStatus { color: #f0b429; font-size: 11px; font-weight: bold; }
+QPushButton#applyEdit { background: #2b6cb0; border: 1px solid #3b82d0; }
+QPushButton#applyEdit:hover { background: #3478c4; }
+QPushButton#editorToggle:checked { background: #3b82d0; border: 1px solid #3b82d0; }
 """
