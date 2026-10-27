@@ -154,6 +154,7 @@ class MainWindow(QMainWindow):
         self._pause()
 
         mode = self._mode_controls.current_mode()
+        self._layer_controls.setVisible(mode.key != "deposicao")
         result = parse_gcode(self._text, dialect=self._dialect_controls.current_dialect())
         moves = apply_mode(result.moves, mode)
 
