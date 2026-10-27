@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, QElapsedTimer, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
-    QScrollArea, QSplitter, QVBoxLayout, QWidget, QMessageBox,
+    QScrollArea, QSplitter, QVBoxLayout, QWidget, QMessageBox, QStackedWidget,
 )
 
 from config import APP_TITLE, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
@@ -27,6 +27,7 @@ from ui.player_bar import PlayerBar
 from ui.stats_panel import StatsPanel
 from ui.theme import DARK_QSS
 from ui.viewport import ToolpathView
+from ui.start_panel import StartPanel
 
 
 class MainWindow(QMainWindow):
@@ -60,6 +61,9 @@ class MainWindow(QMainWindow):
         self._stats_panel = StatsPanel()
         self._issues_panel = IssuesPanel()
         self._player = PlayerBar()
+
+        self._start_panel = StartPanel()
+        self._stack = QStackedWidget()
 
         self._timer = QTimer(self)
         self._timer.setInterval(TICK_MS)
@@ -118,10 +122,25 @@ class MainWindow(QMainWindow):
         body.setSizes([760, 320])
         body.setChildrenCollapsible(False)
 
-        root.addLayout(header)
-        root.addWidget(body, 1)
+        self._stack.addWidget(self._start_panel)
+        self._stack.addWidget(body)
+        self._stack.setCurrentWidget(self._start_panel)
+
+        self._header_widget = QWidget()
+        self._header_widget.setLayout(header)
+        self._header_widget.setVisible(False)
+        self._player.setVisible(False)
+
+        root.addWidget(self._header_widget)
+        root.addWidget(self._stack, 1)
         root.addWidget(self._player)
         self.setCentralWidget(central)
+
+    def _enter_workspace(self) -> None:
+        """Sai da tela inicial: mostra cabeçalho, área de trabalho e barra de reprodução."""
+        self._header_widget.setVisible(True)
+        self._player.setVisible(True)
+        self._stack.setCurrentIndex(1)
 
     def _connect_signals(self) -> None:
         self._open_button.clicked.connect(lambda _checked=False: self.open_file())
@@ -148,12 +167,25 @@ class MainWindow(QMainWindow):
         self._issues_panel.issue_selected.connect(self._go_to_issue)
         self._issues_panel.issue_selected.connect(self._editor.goto_line)
 
+        self._start_panel.open_requested.connect(lambda: self.open_file())
+        self._start_panel.blank_requested.connect(self._start_blank)
+
     # --- carregamento ---
 
     def open_file(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Abrir G-code", "", GCODE_FILTER)
         if path:
             self.load_file(Path(path))
+
+    def _start_blank(self) -> None:
+        """Começa um programa vazio direto no editor, sem arquivo de origem."""
+        self._path = None
+        self._text = ""
+        self._file_label.setText("Novo programa (não salvo)")
+        self._editor.set_text("")
+        self._editor_toggle.setChecked(True)
+        self._enter_workspace()
+        self._show_empty()
 
     def load_file(self, path: Path) -> None:
         try:
@@ -165,6 +197,7 @@ class MainWindow(QMainWindow):
         self._text = text
         self._file_label.setText(str(path))
         self._editor.set_text(text)
+        self._enter_workspace()
         self._reload()
 
     def _apply_edited_text(self, text: str) -> None:

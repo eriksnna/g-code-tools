@@ -379,3 +379,9 @@ Novidades:
 - Adiciona tocha e fio visual no modo deposição;
 - Adiciona inclinação da tocha;
 - Configurações pode ser feita manualmente no ``visualizador/config.py``
+
+### 21/10 — quarta-feira - Adição de tela inicial (~3h)
+
+1. **Adiciona tela inicial**
+
+- Opcao de abrir arquivo ou comecar do zero no editor;

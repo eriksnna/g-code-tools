@@ -104,4 +104,13 @@ QPushButton#saveEdit { background: #2a2e38; }
 QPushButton#editorHelp {
     background: #2a2e38; border-radius: 14px; font-weight: bold;
 }
+
+QFrame#startPanel { background: #16181d; }
+QLabel#startTitle { color: #f0f2f5; font-size: 22px; font-weight: 700; }
+QLabel#startSubtitle { color: #9aa3b2; font-size: 13px; }
+QPushButton#startButton {
+    background: #2b6cb0; border: 1px solid #3b82d0; padding: 10px 16px; font-size: 13px;
+}
+QPushButton#startButton:hover { background: #3478c4; }
+QPushButton#startButtonSecondary { padding: 10px 16px; font-size: 13px; }
 """
