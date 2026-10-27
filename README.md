@@ -351,3 +351,15 @@ Novidades:
 
 - Painel de estatística diferente para cada modo;
 - Adição de configurações adicionais para o modo de deposição (WAAM);
+
+### 14/10 — quarta-feira a 17/10 — sábado - Adição de editor de texto integrado — finalmente! 🎉 (~18h)
+
+1. **Finalmente, agora o aplicativo tem um Editor de Texto nativo.**
+
+- É possível agora inserir diretamente o código no Editor de texto
+
+**Próximos objetivos:**
+
+- Realce de sintaxe (G/M-codes, eixos, comentários, variáveis ``#n``) no código GCode;
+- Números de linha na margem;
+- Atalhos e salvar de volta no arquivo em disco (alteração)
