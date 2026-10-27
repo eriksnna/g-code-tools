@@ -212,6 +212,7 @@ class MainWindow(QMainWindow):
         self._layer_controls.set_levels(levels)
         self._playback.reset(toolpath.total_time)
         self._viewport.show_toolpath(toolpath, levels)
+        self._viewport.set_show_torch(mode.key == "deposicao")
         self._stats_panel.show_program(compute_stats(toolpath, result.commands))
         self._stats_panel.show_mode(mode.name, mode.cards(toolpath))
         self._player.set_enabled(True)

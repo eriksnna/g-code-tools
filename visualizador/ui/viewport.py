@@ -9,13 +9,14 @@ import pyqtgraph.opengl as gl
 
 from config import (
     CAMERA_MARGIN, CAMERA_MIN_DISTANCE, CAMERA_START_DISTANCE,
-    CUT_WIDTH, HEAD_SIZE, RAPID_WIDTH,
+    CUT_WIDTH, HEAD_SIZE, RAPID_WIDTH, TORCH_HEIGHT, TORCH_RADIUS,
+    WIRE_STICKOUT, WIRE_WIDTH_PX, ZOOM_MIN_DISTANCE, ZOOM_STEP,
 )
 from core.layers import layer_indices
 from core.toolpath import Snapshot, Toolpath, interleave
 from ui.theme import (
     ARC_HEAD_COLOR, BACKGROUND, BRIGHT_CUT, BRIGHT_RAPID, CUT_DEPTH_ALPHA, DEPTH_STOPS,
-    DIM_CUT, DIM_RAPID, GRID_COLOR, HEAD_COLOR,
+    DIM_CUT, DIM_RAPID, GRID_COLOR, HEAD_COLOR, TORCH_COLOR, WIRE_COLOR,
 )
 
 GRID_SCALE = 10
@@ -27,6 +28,14 @@ def depth_gradient(count: int) -> np.ndarray:
     positions = np.linspace(0.0, 1.0, len(stops))
     t = np.linspace(0.0, 1.0, count) if count > 1 else np.zeros(1)
     return np.column_stack([np.interp(t, positions, stops[:, c]) for c in range(3)])
+
+
+def _make_torch() -> gl.GLMeshItem:
+    """Cone com a ponta (bico) em z=0 e o corpo subindo em +Z, sem transformação extra."""
+    mesh = gl.MeshData.cylinder(rows=1, cols=16, radius=[0.0, TORCH_RADIUS], length=TORCH_HEIGHT)
+    item = gl.GLMeshItem(meshdata=mesh, color=TORCH_COLOR, smooth=True, shader="shaded", drawEdges=False)
+    item.setGLOptions("opaque")
+    return item
 
 
 class ToolpathView(gl.GLViewWidget):
@@ -54,6 +63,19 @@ class ToolpathView(gl.GLViewWidget):
         self._layer_filter: int | None = None
         self._snapshot: Snapshot | None = None
 
+        # tocha e fio: criados uma vez, escondidos até o modo deposição ativá-los
+        self._show_torch = False
+        self._torch_item = _make_torch()
+        self._torch_item.setVisible(False)
+        self.addItem(self._torch_item)
+
+        self._wire_item = gl.GLLinePlotItem(
+            pos=np.zeros((2, 3)), color=np.array([WIRE_COLOR, WIRE_COLOR]),
+            width=WIRE_WIDTH_PX, antialias=True, mode="line_strip",
+        )
+        self._wire_item.setVisible(False)
+        self.addItem(self._wire_item)
+
     # --- carregamento ---
 
     def show_toolpath(self, toolpath: Toolpath, levels: Sequence[float]) -> None:
@@ -80,6 +102,8 @@ class ToolpathView(gl.GLViewWidget):
         self._cut_item = self._rapid_item = self._head = None
         self._toolpath = None
         self._snapshot = None
+        self._torch_item.setVisible(False)
+        self._wire_item.setVisible(False)
 
     def _make_line(self, toolpath: Toolpath, mask: np.ndarray, width: float):
         if not mask.any():
@@ -104,6 +128,14 @@ class ToolpathView(gl.GLViewWidget):
         self._layer_filter = index
         self._redraw()
 
+    def set_show_torch(self, enabled: bool) -> None:
+        """Liga ou desliga a tocha e o fio (usado no modo deposição)."""
+        self._show_torch = enabled
+        if not enabled:
+            self._torch_item.setVisible(False)
+            self._wire_item.setVisible(False)
+        self._redraw()
+
     # --- renderização ---
 
     def render(self, snapshot: Snapshot) -> None:
@@ -126,6 +158,29 @@ class ToolpathView(gl.GLViewWidget):
                 pos=snapshot.head.reshape(1, 3),
                 color=np.asarray([color], dtype=float),
             )
+
+        if self._show_torch:
+            self._update_torch(snapshot.head)
+
+    def _update_torch(self, head: np.ndarray) -> None:
+        """Posiciona a ponta da tocha no fim do stickout, acima do ponto de trabalho."""
+        tip = head + np.array([0.0, 0.0, WIRE_STICKOUT])
+
+        self._torch_item.resetTransform()
+        self._torch_item.translate(float(tip[0]), float(tip[1]), float(tip[2]))
+        self._torch_item.setVisible(True)
+
+        self._wire_item.setData(pos=np.array([tip, head]))
+        self._wire_item.setVisible(True)
+
+    def wheelEvent(self, event) -> None:
+        """Zoom com fator fixo por clique da roda, para manter sensibilidade em close-up."""
+        delta = event.angleDelta().y()
+        if delta == 0:
+            return
+        factor = ZOOM_STEP if delta > 0 else 1.0 / ZOOM_STEP
+        self.opts["distance"] = max(ZOOM_MIN_DISTANCE, self.opts["distance"] * factor)
+        self.update()
 
     @staticmethod
     def _set_item_colors(item, colors: np.ndarray, mask: np.ndarray) -> None:

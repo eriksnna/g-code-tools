@@ -50,3 +50,13 @@ DEFAULT_MODE = "usinagem"          # "usinagem" ou "deposicao"
 BEAD_WIDTH_MM = 6.0                # largura do cordão (padrão, editável na interface)
 BEAD_HEIGHT_MM = 3.0               # altura do cordão por camada
 DEPOSIT_DENSITY_G_CM3 = 7.85       # aço carbono; ajuste para o seu arame
+
+# Zoom do viewport 3D
+ZOOM_STEP = 0.88          # fator multiplicativo por "clique" da roda (menor = zoom mais rápido)
+ZOOM_MIN_DISTANCE = 5.0   # mm, não deixa a câmera colar na peça
+
+# Visual da tocha (modo deposição)
+TORCH_HEIGHT = 8.0      # mm, comprimento do corpo da tocha desenhada
+TORCH_RADIUS = 1.5      # mm, raio da base da tocha
+WIRE_STICKOUT = 3.0      # mm, distância entre a ponta da tocha e a peça
+WIRE_WIDTH_PX = 1         # espessura visual do fio, em pixels de tela

@@ -363,3 +363,18 @@ Novidades:
 - Realce de sintaxe (G/M-codes, eixos, comentários, variáveis ``#n``) no código GCode;
 - Números de linha na margem;
 - Atalhos e salvar de volta no arquivo em disco (alteração)
+
+### 18/10 — domingo - Realização dos objetivos (~3h)
+
+**Agora:**
+
+- Realce de sintaxe (G/M-codes, eixos, comentários, variáveis ``#n``) no código GCode;
+- Números de linha na margem;
+- Atalhos e salvar de volta no arquivo em disco (alteração)
+
+### 19/10 — segunda-feira - Implementação no modo deposição (WAAM) (~2h)
+
+**Agora:**
+
+- Adiciona tocha e fio visual no modo deposição;
+- Configuração pode ser feita manualmente no ``visualizador/config.py``
