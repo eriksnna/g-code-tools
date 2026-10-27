@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, QElapsedTimer, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
-    QScrollArea, QSplitter, QVBoxLayout, QWidget,
+    QScrollArea, QSplitter, QVBoxLayout, QWidget, QMessageBox,
 )
 
 from config import APP_TITLE, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
@@ -129,6 +129,7 @@ class MainWindow(QMainWindow):
         self._dialect_controls.changed.connect(self._reload)
         self._editor_toggle.toggled.connect(self._editor.setVisible)
         self._editor.apply_requested.connect(lambda _text: self._editor_toggle.setChecked(True))
+        self._editor.save_requested.connect(self._save_edited_text)
         self._editor.apply_requested.connect(self._apply_edited_text)
 
         p = self._player
@@ -171,6 +172,19 @@ class MainWindow(QMainWindow):
         self._text = text
         self._editor.mark_applied()
         self._reload()
+
+    def _save_edited_text(self, text: str) -> None:
+        """Salva o texto do editor de volta no arquivo aberto, e reaplica."""
+        if self._path is None:
+            self._player.set_status("Nenhum arquivo aberto para salvar.")
+            return
+        try:
+            self._path.write_text(text, encoding="utf-8")
+        except OSError as err:
+            QMessageBox.warning(self, "Erro ao salvar", f"Não foi possível salvar: {err}")
+            return
+        self._apply_edited_text(text)
+        self._player.set_status(f"Salvo em {self._path}")
 
     def _reload(self) -> None:
         """Reinterpreta o texto atual com o modo e o dialeto escolhidos."""
