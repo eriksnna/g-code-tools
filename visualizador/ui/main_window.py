@@ -25,6 +25,7 @@ from ui.player_bar import PlayerBar
 from ui.stats_panel import StatsPanel
 from ui.theme import DARK_QSS
 from ui.viewport import ToolpathView
+from ui.dialect_controls import DialectControls
 
 
 class MainWindow(QMainWindow):
@@ -47,6 +48,7 @@ class MainWindow(QMainWindow):
         self._file_label = QLabel("Nenhum arquivo carregado")
         self._file_label.setObjectName("fileLabel")
         self._mode_controls = ModeControls()
+        self._dialect_controls = DialectControls()
         self._layer_controls = LayerControls()
         self._viewport = ToolpathView()
         self._stats_panel = StatsPanel()
@@ -78,6 +80,7 @@ class MainWindow(QMainWindow):
         header.addWidget(self._open_button)
         header.addWidget(self._file_label, 1)
         header.addWidget(self._mode_controls)
+        header.addWidget(self._dialect_controls)
         header.addWidget(self._layer_controls)
 
         stats_scroll = QScrollArea()
@@ -109,6 +112,7 @@ class MainWindow(QMainWindow):
     def _connect_signals(self) -> None:
         self._open_button.clicked.connect(lambda _checked=False: self.open_file())
         self._mode_controls.changed.connect(self._reload)
+        self._dialect_controls.changed.connect(self._reload)
 
         p = self._player
         p.play_clicked.connect(self._toggle_play)
@@ -150,7 +154,7 @@ class MainWindow(QMainWindow):
         self._pause()
 
         mode = self._mode_controls.current_mode()
-        result = parse_gcode(self._text)
+        result = parse_gcode(self._text, dialect=self._dialect_controls.current_dialect())
         moves = apply_mode(result.moves, mode)
 
         self._source_lines = self._text.splitlines()

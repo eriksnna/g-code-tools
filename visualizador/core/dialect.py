@@ -38,3 +38,5 @@ def get_dialect(key: str) -> Dialect:
         return DIALECTS[key]
     except KeyError as err:
         raise ValueError(f"dialeto desconhecido: {key!r}") from err
+
+DIALECT_CHOICES = [(dialect.name, key) for key, dialect in DIALECTS.items()]
