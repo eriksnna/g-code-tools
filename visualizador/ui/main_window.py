@@ -128,6 +128,7 @@ class MainWindow(QMainWindow):
         self._mode_controls.changed.connect(self._reload)
         self._dialect_controls.changed.connect(self._reload)
         self._editor_toggle.toggled.connect(self._editor.setVisible)
+        self._editor.apply_requested.connect(lambda _text: self._editor_toggle.setChecked(True))
         self._editor.apply_requested.connect(self._apply_edited_text)
 
         p = self._player
@@ -144,6 +145,7 @@ class MainWindow(QMainWindow):
         c.depth_coloring_toggled.connect(self._viewport.set_depth_coloring)
 
         self._issues_panel.issue_selected.connect(self._go_to_issue)
+        self._issues_panel.issue_selected.connect(self._editor.goto_line)
 
     # --- carregamento ---
 
@@ -212,6 +214,7 @@ class MainWindow(QMainWindow):
     # --- validação ---
 
     def _go_to_issue(self, line: int) -> None:
+        self._editor_toggle.setChecked(True)
         if 1 <= line <= len(self._source_lines):
             self._issues_panel.show_source(line, self._source_lines[line - 1].strip())
 
