@@ -396,3 +396,10 @@ Novidades:
 - Mais ajustes na tocha
 
 2. **Correção de bugs gerais**
+
+### 23/10 — sexta-feira a 24/10 — domingo - Adição de tela de ajustes (~12h)
+
+**Novidades:**
+
+- Nova tela de ajuste;
+- Persistência de perfis em json (salvo em ``%APPDATA%\GCodeTools\profiles.json``)
