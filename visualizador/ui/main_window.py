@@ -149,6 +149,7 @@ class MainWindow(QMainWindow):
         self._editor_toggle.toggled.connect(self._editor.setVisible)
         self._editor.apply_requested.connect(lambda _text: self._editor_toggle.setChecked(True))
         self._editor.save_requested.connect(self._save_edited_text)
+        self._editor.save_as_requested.connect(self._save_edited_text_as)
         self._editor.apply_requested.connect(self._apply_edited_text)
 
         p = self._player
@@ -207,17 +208,31 @@ class MainWindow(QMainWindow):
         self._reload()
 
     def _save_edited_text(self, text: str) -> None:
-        """Salva o texto do editor de volta no arquivo aberto, e reaplica."""
+        """Salva no arquivo aberto; sem arquivo de origem, pede um caminho novo."""
         if self._path is None:
-            self._player.set_status("Nenhum arquivo aberto para salvar.")
+            self._save_edited_text_as(text)
             return
+        self._write_to_path(self._path, text)
+
+    def _save_edited_text_as(self, text: str) -> None:
+        """Sempre pergunta o caminho, mesmo que já exista um arquivo aberto."""
+        path_str, _ = QFileDialog.getSaveFileName(self, "Salvar G-code como", "", GCODE_FILTER)
+        if not path_str:
+            return
+        path = Path(path_str)
+        if self._write_to_path(path, text):
+            self._path = path
+            self._file_label.setText(str(path))
+
+    def _write_to_path(self, path: Path, text: str) -> bool:
         try:
-            self._path.write_text(text, encoding="utf-8")
+            path.write_text(text, encoding="utf-8")
         except OSError as err:
             QMessageBox.warning(self, "Erro ao salvar", f"Não foi possível salvar: {err}")
-            return
+            return False
         self._apply_edited_text(text)
-        self._player.set_status(f"Salvo em {self._path}")
+        self._player.set_status(f"Salvo em {path}")
+        return True
 
     def _reload(self) -> None:
         """Reinterpreta o texto atual com o modo e o dialeto escolhidos."""

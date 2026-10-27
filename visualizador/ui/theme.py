@@ -101,6 +101,7 @@ QPushButton#applyEdit:hover { background: #3478c4; }
 QPushButton#editorToggle:checked { background: #3b82d0; border: 1px solid #3b82d0; }
 
 QPushButton#saveEdit { background: #2a2e38; }
+QPushButton#saveAsEdit { background: #2a2e38; }
 QPushButton#editorHelp {
     background: #2a2e38; border-radius: 14px; font-weight: bold;
 }

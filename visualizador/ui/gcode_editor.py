@@ -17,6 +17,7 @@ EDITOR_FONT_SIZE = 12
 APPLY_SHORTCUT = "Ctrl+Return"
 COMMENT_SHORTCUT = "Ctrl+/"
 SAVE_SHORTCUT = "Ctrl+S"
+SAVE_AS_SHORTCUT = "Ctrl+Shift+S"
 PLACEHOLDER = "Abra um arquivo G-code para editar aqui."
 GUTTER_PADDING = 12
 GUTTER_BACKGROUND = QColor("#191b21")
@@ -26,7 +27,8 @@ CURRENT_LINE_BACKGROUND = QColor("#23262f")
 SHORTCUTS_TEXT = (
     f"{APPLY_SHORTCUT}   Aplicar as alterações e reinterpretar o programa\n"
     f"{COMMENT_SHORTCUT}   Comentar ou descomentar a linha atual (ou a seleção)\n"
-    f"{SAVE_SHORTCUT}   Salvar o texto editado de volta no arquivo"
+    f"{SAVE_SHORTCUT}   Salvar no arquivo aberto\n"
+    f"{SAVE_AS_SHORTCUT}   Salvar como... (escolher um novo arquivo)"
 )
 
 
@@ -153,6 +155,7 @@ class _CodeTextEdit(QPlainTextEdit):
 class GCodeEditor(QFrame):
     apply_requested = Signal(str)  # texto atual, quando o usuário pede para aplicar
     save_requested = Signal(str)   # texto atual, quando o usuário pede para salvar no disco
+    save_as_requested = Signal(str)  # texto atual, quando o usuário pede "salvar como"
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -179,6 +182,10 @@ class GCodeEditor(QFrame):
         self._save_button.setObjectName("saveEdit")
         self._save_button.clicked.connect(self._emit_save)
 
+        self._save_as_button = QPushButton("Salvar como...")
+        self._save_as_button.setObjectName("saveAsEdit")
+        self._save_as_button.clicked.connect(self._emit_save_as)
+
         self._help_button = QPushButton("?")
         self._help_button.setObjectName("editorHelp")
         self._help_button.setFixedWidth(28)
@@ -190,6 +197,7 @@ class GCodeEditor(QFrame):
             self._text_edit.toggle_comment
         )
         QShortcut(QKeySequence(SAVE_SHORTCUT), self._text_edit).activated.connect(self._emit_save)
+        QShortcut(QKeySequence(SAVE_AS_SHORTCUT), self._text_edit).activated.connect(self._emit_save_as)
 
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
@@ -198,6 +206,7 @@ class GCodeEditor(QFrame):
         toolbar.addStretch()
         toolbar.addWidget(self._help_button)
         toolbar.addWidget(self._save_button)
+        toolbar.addWidget(self._save_as_button)
         toolbar.addWidget(self._apply_button)
 
         layout = QVBoxLayout(self)
@@ -228,6 +237,9 @@ class GCodeEditor(QFrame):
 
     def _emit_save(self) -> None:
         self.save_requested.emit(self.text())
+
+    def _emit_save_as(self) -> None:
+        self.save_as_requested.emit(self.text())
 
     def _on_modified(self, modified: bool) -> None:
         self._status_label.setText("não aplicado" if modified else "")
