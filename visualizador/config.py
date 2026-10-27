@@ -60,3 +60,5 @@ TORCH_HEIGHT = 8.0      # mm, comprimento do corpo da tocha desenhada
 TORCH_RADIUS = 1.5      # mm, raio da base da tocha
 WIRE_STICKOUT = 3.0      # mm, distância entre a ponta da tocha e a peça
 WIRE_WIDTH_PX = 1         # espessura visual do fio, em pixels de tela
+
+TORCH_MAX_TILT_DEG = 8.0   # inclinação sutil, só para indicar a direção

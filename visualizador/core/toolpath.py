@@ -23,10 +23,18 @@ def interleave(starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
 @dataclass(frozen=True)
 class Snapshot:
     """Estado da simulação em um instante."""
-    head: np.ndarray        # posição da ferramenta, shape (3,)
-    done: int               # movimentos concluídos
-    started: int            # movimentos iniciados, incluindo o em curso
-    active: bool = False    # processo ligado no instante
+    head: np.ndarray                 # posição da ferramenta, shape (3,)
+    done: int                        # movimentos concluídos
+    started: int                     # movimentos iniciados, incluindo o em curso
+    active: bool = False             # processo ligado no instante
+    segment_start: np.ndarray = None # início do movimento em curso (para direção/tilt)
+    segment_end: np.ndarray = None   # fim do movimento em curso (para direção/tilt)
+
+    def __post_init__(self) -> None:
+        if self.segment_start is None:
+            object.__setattr__(self, "segment_start", self.head)
+        if self.segment_end is None:
+            object.__setattr__(self, "segment_end", self.head)
 
 
 class Toolpath:
@@ -72,14 +80,18 @@ class Toolpath:
         """Estado da ferramenta no instante t, em segundos."""
         k = int(np.searchsorted(self.cum_end, t, side="right"))
         if k >= self.count:
-            return Snapshot(head=self.ends[-1].copy(), done=self.count,
-                            started=self.count, active=False)
+            end = self.ends[-1].copy()
+            return Snapshot(head=end, done=self.count, started=self.count, active=False,
+                            segment_start=self.starts[-1], segment_end=end)
 
         begin = self.cum_start[k]
         progress = (t - begin) / self.durations[k]
         head = self.starts[k] + progress * (self.ends[k] - self.starts[k])
         started = k + 1 if t > begin else k
-        return Snapshot(head=head, done=k, started=started, active=bool(self.active[k]))
+        return Snapshot(
+            head=head, done=k, started=started, active=bool(self.active[k]),
+            segment_start=self.starts[k], segment_end=self.ends[k],
+        )
 
     def time_at_line(self, line: int) -> float | None:
         """Instante do primeiro movimento escrito na linha dada.

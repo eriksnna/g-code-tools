@@ -1,6 +1,7 @@
 """Viewport 3D: desenha o caminho, aplica cores por profundidade e o estado da simulação."""
 from __future__ import annotations
 
+import math
 from typing import Sequence
 
 import numpy as np
@@ -9,8 +10,8 @@ import pyqtgraph.opengl as gl
 
 from config import (
     CAMERA_MARGIN, CAMERA_MIN_DISTANCE, CAMERA_START_DISTANCE,
-    CUT_WIDTH, HEAD_SIZE, RAPID_WIDTH, TORCH_HEIGHT, TORCH_RADIUS,
-    WIRE_STICKOUT, WIRE_WIDTH_PX, ZOOM_MIN_DISTANCE, ZOOM_STEP,
+    CUT_WIDTH, HEAD_SIZE, RAPID_WIDTH, TORCH_HEIGHT, TORCH_MAX_TILT_DEG,
+    TORCH_RADIUS, WIRE_STICKOUT, WIRE_WIDTH_PX, ZOOM_MIN_DISTANCE, ZOOM_STEP,
 )
 from core.layers import layer_indices
 from core.toolpath import Snapshot, Toolpath, interleave
@@ -20,6 +21,7 @@ from ui.theme import (
 )
 
 GRID_SCALE = 10
+MIN_DIRECTION_LENGTH = 1e-6  # abaixo disso, o deslocamento XY é tratado como nulo
 
 
 def depth_gradient(count: int) -> np.ndarray:
@@ -36,6 +38,15 @@ def _make_torch() -> gl.GLMeshItem:
     item = gl.GLMeshItem(meshdata=mesh, color=TORCH_COLOR, smooth=True, shader="shaded", drawEdges=False)
     item.setGLOptions("opaque")
     return item
+
+
+def _tilt_direction(start: np.ndarray, end: np.ndarray) -> np.ndarray | None:
+    """Vetor unitário XY da direção de deslocamento, ou None se o movimento for vertical/nulo."""
+    dxy = end[:2] - start[:2]
+    length = float(np.linalg.norm(dxy))
+    if length < MIN_DIRECTION_LENGTH:
+        return None
+    return dxy / length
 
 
 class ToolpathView(gl.GLViewWidget):
@@ -76,6 +87,8 @@ class ToolpathView(gl.GLViewWidget):
         self._wire_item.setVisible(False)
         self.addItem(self._wire_item)
 
+        self._last_tilt_xy = np.array([0.0, 0.0])  # direção XY mantida quando a tocha está parada
+
     # --- carregamento ---
 
     def show_toolpath(self, toolpath: Toolpath, levels: Sequence[float]) -> None:
@@ -85,6 +98,7 @@ class ToolpathView(gl.GLViewWidget):
         self._levels = np.asarray(levels, dtype=float)
         self._layer_of = layer_indices(toolpath, self._levels)
         self._layer_filter = None
+        self._last_tilt_xy = np.array([0.0, 0.0])
         self._build_colors()
 
         self._cut_item = self._make_line(toolpath, toolpath.is_cut, CUT_WIDTH)
@@ -160,27 +174,31 @@ class ToolpathView(gl.GLViewWidget):
             )
 
         if self._show_torch:
-            self._update_torch(snapshot.head)
+            self._update_torch(snapshot)
 
-    def _update_torch(self, head: np.ndarray) -> None:
-        """Posiciona a ponta da tocha no fim do stickout, acima do ponto de trabalho."""
+    def _update_torch(self, snapshot: Snapshot) -> None:
+        """Posiciona a tocha acima do ponto de trabalho, inclinada na direção do movimento."""
+        head = snapshot.head
+        direction = _tilt_direction(snapshot.segment_start, snapshot.segment_end)
+        if direction is not None:
+            self._last_tilt_xy = direction
+        dx, dy = self._last_tilt_xy
+        heading_deg = math.degrees(math.atan2(dy, dx)) if (dx or dy) else 0.0
+
         tip = head + np.array([0.0, 0.0, WIRE_STICKOUT])
 
         self._torch_item.resetTransform()
+        # 1) move a ponta (origem local) até o ponto alvo
         self._torch_item.translate(float(tip[0]), float(tip[1]), float(tip[2]))
+        # 2) gira o corpo ao redor dessa ponta: primeiro inclina (eixo Y local),
+        #    depois orienta a inclinação na direção do deslocamento (eixo Z do mundo)
+        self._torch_item.rotate(heading_deg, 0, 0, 1, local=False)
+        self._torch_item.rotate(TORCH_MAX_TILT_DEG, 0, 1, 0, local=True)
         self._torch_item.setVisible(True)
 
+        # o fio sempre liga a ponta real (tip, ponto fixo da rotação) ao ponto de trabalho
         self._wire_item.setData(pos=np.array([tip, head]))
         self._wire_item.setVisible(True)
-
-    def wheelEvent(self, event) -> None:
-        """Zoom com fator fixo por clique da roda, para manter sensibilidade em close-up."""
-        delta = event.angleDelta().y()
-        if delta == 0:
-            return
-        factor = ZOOM_STEP if delta > 0 else 1.0 / ZOOM_STEP
-        self.opts["distance"] = max(ZOOM_MIN_DISTANCE, self.opts["distance"] * factor)
-        self.update()
 
     @staticmethod
     def _set_item_colors(item, colors: np.ndarray, mask: np.ndarray) -> None:
@@ -217,3 +235,12 @@ class ToolpathView(gl.GLViewWidget):
         size = float(np.linalg.norm(hi - lo))
         self.opts["center"] = pg.Vector(*center)
         self.setCameraPosition(distance=max(size * CAMERA_MARGIN, CAMERA_MIN_DISTANCE))
+
+    def wheelEvent(self, event) -> None:
+        """Zoom com fator fixo por clique da roda, para manter sensibilidade em close-up."""
+        delta = event.angleDelta().y()
+        if delta == 0:
+            return
+        factor = ZOOM_STEP if delta > 0 else 1.0 / ZOOM_STEP
+        self.opts["distance"] = max(ZOOM_MIN_DISTANCE, self.opts["distance"] * factor)
+        self.update()

@@ -27,6 +27,11 @@ def test_snapshot_interpolates_inside_a_move():
     assert snap.done == 0
     assert snap.started == 1
 
+def test_snapshot_exposes_segment_endpoints_for_direction():
+    snap = make_path().snapshot(3.0)
+    assert snap.segment_start == pytest.approx((0.0, 0.0, 0.0))
+    assert snap.segment_end == pytest.approx((60.0, 0.0, 0.0))
+
 def test_time_at_line_returns_start_of_first_move_from_that_line():
     path = Toolpath([
         Move((0, 0, 0), (10, 0, 0), is_cut=True, feed=600.0, line=1),  # 1 s
