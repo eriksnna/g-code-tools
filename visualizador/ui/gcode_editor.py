@@ -7,6 +7,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Signal
 
+from ui.gcode_highlighter import GCodeHighlighter
+
 EDITOR_FONT_FAMILY = "Consolas"
 EDITOR_FONT_SIZE = 12
 APPLY_SHORTCUT = "Ctrl+Return"
@@ -26,6 +28,7 @@ class GCodeEditor(QFrame):
         font = QFont(EDITOR_FONT_FAMILY, EDITOR_FONT_SIZE)
         font.setStyleHint(QFont.StyleHint.Monospace)
         self._text_edit.setFont(font)
+        self._highlighter = GCodeHighlighter(self._text_edit.document())
         self._text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self._text_edit.modificationChanged.connect(self._on_modified)
 
