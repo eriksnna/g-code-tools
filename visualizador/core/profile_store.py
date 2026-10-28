@@ -1,8 +1,9 @@
 """Persistência dos perfis de máquina em disco (JSON na pasta de configuração do usuário).
 
 Falha ao ler ou escrever esse arquivo nunca deve travar o app: persistência é uma
-conveniência, então qualquer problema (arquivo corrompido, sem permissão de escrita)
-cai de volta nos perfis padrão em memória, silenciosamente.
+conveniência, então qualquer problema (arquivo corrompido, sem permissão de escrita,
+ou um arquivo salvo por uma versão anterior sem os campos "mode"/"dialect") cai de
+volta em padrões, silenciosamente.
 """
 from __future__ import annotations
 
@@ -25,6 +26,8 @@ def load_profiles() -> tuple[list[MachineProfile], str | None]:
                     axis: (float(bounds[0]), float(bounds[1]))
                     for axis, bounds in item["limits"].items()
                 },
+                mode_key=str(item.get("mode", config.DEFAULT_MODE)),
+                dialect_key=str(item.get("dialect", config.DEFAULT_DIALECT)),
             )
             for item in data["profiles"]
         ]
@@ -40,7 +43,12 @@ def save_profiles(profiles: list[MachineProfile], active_name: str) -> None:
     payload = {
         "active": active_name,
         "profiles": [
-            {"name": p.name, "limits": {axis: list(bounds) for axis, bounds in p.limits.items()}}
+            {
+                "name": p.name,
+                "limits": {axis: list(bounds) for axis, bounds in p.limits.items()},
+                "mode": p.mode_key,
+                "dialect": p.dialect_key,
+            }
             for p in profiles
         ],
     }

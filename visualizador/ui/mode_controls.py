@@ -49,6 +49,11 @@ class ModeControls(QWidget):
         bead = BeadSpec(self._width.value(), self._height.value(), self._density.value())
         return create_mode(self._combo.currentData(), bead)
 
+    def set_mode(self, key: str) -> None:
+        index = self._combo.findData(key)
+        if index >= 0:
+            self._combo.setCurrentIndex(index)
+
     def _make_spin(self, low: float, high: float, value: float, suffix: str) -> QDoubleSpinBox:
         spin = QDoubleSpinBox()
         spin.setRange(low, high)

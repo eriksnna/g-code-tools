@@ -31,3 +31,11 @@ class DialectControls(QWidget):
 
     def current_dialect(self) -> Dialect:
         return get_dialect(self._combo.currentData())
+
+    def current_key(self) -> str:
+        return self._combo.currentData()
+
+    def set_dialect(self, key: str) -> None:
+        index = self._combo.findData(key)
+        if index >= 0:
+            self._combo.setCurrentIndex(index)

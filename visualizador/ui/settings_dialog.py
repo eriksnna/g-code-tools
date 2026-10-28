@@ -1,8 +1,13 @@
-"""Tela de Ajustes: navegação lateral com seções (Perfis, Atalhos, ...)."""
+"""Tela de Ajustes: navegação lateral com seções (Perfis, Atalhos, ...).
+
+Cada perfil reúne modo de processo, dialeto e limites de curso: a configuração
+completa de uma máquina.
+"""
 from __future__ import annotations
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
@@ -20,7 +25,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.dialect import DIALECT_CHOICES
 from core.machine_profile import DEFAULT_LIMITS, MachineProfile, default_profiles
+from core.modes import MODE_CHOICES
 
 SHORTCUTS_TEXT = """\
 Ctrl+Return      Aplicar o G-code editado
@@ -31,7 +38,7 @@ Ctrl+Shift+S     Salvar como...
 
 
 class _ProfilesPage(QWidget):
-    """Lista de perfis de máquina: selecionar, criar, remover e editar limites."""
+    """Lista de perfis: cada perfil reúne modo, dialeto e limites de curso."""
 
     changed = Signal()
 
@@ -45,6 +52,7 @@ class _ProfilesPage(QWidget):
         self._profiles: list[MachineProfile] = list(profiles) if profiles else default_profiles()
         self._active: MachineProfile = active_profile or self._profiles[0]
         self._spinboxes: dict[str, tuple[QDoubleSpinBox, QDoubleSpinBox]] = {}
+        self._loading = False
 
         layout = QVBoxLayout(self)
 
@@ -58,7 +66,7 @@ class _ProfilesPage(QWidget):
         layout.addWidget(self._profile_list)
 
         profile_buttons = QHBoxLayout()
-        add_button = QPushButton("Novo perfil")
+        add_button = QPushButton("Salvar como novo perfil...")
         add_button.clicked.connect(self._add_profile)
         remove_button = QPushButton("Remover perfil")
         remove_button.clicked.connect(self._remove_profile)
@@ -66,26 +74,43 @@ class _ProfilesPage(QWidget):
         profile_buttons.addWidget(remove_button)
         layout.addLayout(profile_buttons)
 
+        config_box = QGroupBox("Configuração do perfil")
+        form = QFormLayout(config_box)
+
+        self._mode_combo = QComboBox()
+        for label, key in MODE_CHOICES:
+            self._mode_combo.addItem(label, key)
+        self._mode_combo.currentIndexChanged.connect(self._on_fields_edited)
+        form.addRow("Modo:", self._mode_combo)
+
+        self._dialect_combo = QComboBox()
+        for label, key in DIALECT_CHOICES:
+            self._dialect_combo.addItem(label, key)
+        self._dialect_combo.currentIndexChanged.connect(self._on_fields_edited)
+        form.addRow("Dialeto:", self._dialect_combo)
+
+        layout.addWidget(config_box)
+
         limits_box = QGroupBox("Limites de curso (mm)")
-        form = QFormLayout(limits_box)
+        limits_form = QFormLayout(limits_box)
         for axis in ("X", "Y", "Z"):
             lo = QDoubleSpinBox()
             hi = QDoubleSpinBox()
             for spin in (lo, hi):
                 spin.setRange(-1_000_000.0, 1_000_000.0)
                 spin.setDecimals(2)
-                spin.valueChanged.connect(self._on_limits_edited)
+                spin.valueChanged.connect(self._on_fields_edited)
             row = QHBoxLayout()
             row.addWidget(QLabel("min"))
             row.addWidget(lo)
             row.addWidget(QLabel("max"))
             row.addWidget(hi)
-            form.addRow(f"{axis}:", row)
+            limits_form.addRow(f"{axis}:", row)
             self._spinboxes[axis] = (lo, hi)
         layout.addWidget(limits_box)
         layout.addStretch(1)
 
-        self._load_active_into_spinboxes()
+        self._load_active_into_fields()
 
     def profiles(self) -> list[MachineProfile]:
         return self._profiles
@@ -97,36 +122,40 @@ class _ProfilesPage(QWidget):
         if row < 0:
             return
         self._active = self._profiles[row]
-        self._load_active_into_spinboxes()
+        self._load_active_into_fields()
         self.changed.emit()
 
-    def _load_active_into_spinboxes(self) -> None:
+    def _load_active_into_fields(self) -> None:
+        self._loading = True
+        self._mode_combo.setCurrentIndex(max(0, self._mode_combo.findData(self._active.mode_key)))
+        self._dialect_combo.setCurrentIndex(
+            max(0, self._dialect_combo.findData(self._active.dialect_key))
+        )
         for axis, (lo, hi) in self._spinboxes.items():
             lo_value, hi_value = self._active.limits[axis]
-            lo.blockSignals(True)
-            hi.blockSignals(True)
             lo.setValue(lo_value)
             hi.setValue(hi_value)
-            lo.blockSignals(False)
-            hi.blockSignals(False)
+        self._loading = False
 
-    def _on_limits_edited(self) -> None:
-        clone = self._active.clone()
+    def _on_fields_edited(self) -> None:
+        if self._loading:
+            return
+        self._active.mode_key = self._mode_combo.currentData()
+        self._active.dialect_key = self._dialect_combo.currentData()
         for axis, (lo, hi) in self._spinboxes.items():
-            clone.limits[axis] = (lo.value(), hi.value())
-        self._active = clone
-        self._profiles[self._profile_list.currentRow()] = clone
+            self._active.limits[axis] = (lo.value(), hi.value())
         self.changed.emit()
 
     def _add_profile(self) -> None:
-        name, ok = QInputDialog.getText(self, "Novo perfil", "Nome do perfil:")
+        name, ok = QInputDialog.getText(self, "Salvar como novo perfil", "Nome do perfil:")
         name = name.strip()
         if not ok or not name:
             return
         if any(p.name == name for p in self._profiles):
             QMessageBox.warning(self, "Nome em uso", f"Já existe um perfil chamado \"{name}\".")
             return
-        profile = MachineProfile(name=name, limits=dict(DEFAULT_LIMITS))
+        profile = self._active.clone()
+        profile.name = name
         self._profiles.append(profile)
         self._profile_list.addItem(profile.name)
         self._profile_list.setCurrentRow(self._profile_list.count() - 1)
@@ -174,7 +203,7 @@ class SettingsDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Ajustes")
-        self.resize(560, 420)
+        self.resize(560, 460)
 
         self._nav = QListWidget()
         self._nav.addItems(["Perfis", "Atalhos"])

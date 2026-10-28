@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QScrollArea, QSplitter, QVBoxLayout, QWidget, QMessageBox, QStackedWidget,
 )
 
-from config import APP_TITLE, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
+from config import APP_TITLE, DEFAULT_DIALECT, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
 import config
 from core.layers import depth_levels
 from core.lexer import Issue
@@ -20,7 +20,7 @@ from core.playback import Playback
 from core.stats import compute_stats, format_duration
 from core.toolpath import Snapshot, Toolpath
 from core.file_safety import UnsafeFileError, check_file_size, check_line_lengths
-from ui.dialect_controls import DialectControls
+from core.dialect import get_dialect
 from ui.gcode_editor import GCodeEditor
 from ui.issues_panel import IssuesPanel
 from ui.layer_controls import LayerControls
@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
         self._file_label = QLabel("Nenhum arquivo carregado")
         self._file_label.setObjectName("fileLabel")
         self._mode_controls = ModeControls()
-        self._dialect_controls = DialectControls()
+        self._mode_controls.set_mode(self._profile.mode_key)
         self._editor_toggle = QPushButton("Editor")
         self._editor_toggle.setObjectName("editorToggle")
         self._editor_toggle.setCheckable(True)
@@ -97,11 +97,8 @@ class MainWindow(QMainWindow):
 
         header = QHBoxLayout()
         header.setSpacing(10)
-        header.addWidget(self._open_button)
         header.addWidget(self._file_label, 1)
         header.addWidget(self._mode_controls)
-        header.addWidget(self._dialect_controls)
-        header.addWidget(self._settings_button)
         header.addWidget(self._editor_toggle)
         header.addWidget(self._layer_controls)
 
@@ -234,10 +231,7 @@ class MainWindow(QMainWindow):
                 self.load_file(path)
 
     def _connect_signals(self) -> None:
-        self._open_button.clicked.connect(lambda _checked=False: self.open_file())
-        self._mode_controls.changed.connect(self._reload)
-        self._dialect_controls.changed.connect(self._reload)
-        self._settings_button.clicked.connect(self._open_settings)
+        self._mode_controls.changed.connect(self._on_mode_changed)
         self._editor_toggle.toggled.connect(self._editor.setVisible)
         self._editor.apply_requested.connect(lambda _text: self._editor_toggle.setChecked(True))
         self._editor.save_requested.connect(self._save_edited_text)
@@ -276,11 +270,19 @@ class MainWindow(QMainWindow):
             self.load_file(Path(path))
 
     def _open_settings(self) -> None:
-        """Abre a tela de Ajustes (perfis/limites, atalhos)."""
+        """Abre a tela de Ajustes (perfis: modo, dialeto e limites)."""
         dialog = SettingsDialog(self, profiles=self._profiles, active_profile=self._profile)
         dialog.exec()
         self._profiles = dialog.profiles()
         self._profile = dialog.current_profile()
+        save_profiles(self._profiles, self._profile.name)
+        self._mode_controls.set_mode(self._profile.mode_key)
+        self._reload()
+
+    def _on_mode_changed(self) -> None:
+        """O usuário trocou o modo (ou um parâmetro de cordão) na tela principal."""
+        mode = self._mode_controls.current_mode()
+        self._profile.mode_key = mode.key
         save_profiles(self._profiles, self._profile.name)
         self._reload()
 
@@ -383,7 +385,7 @@ class MainWindow(QMainWindow):
         self._pause()
 
         mode = self._mode_controls.current_mode()
-        dialect = self._dialect_controls.current_dialect()
+        dialect = get_dialect(self._profile.dialect_key)
         limits = self._profile.limits
         result = parse_gcode(self._text, dialect=dialect, limits=limits)
         moves = apply_mode(result.moves, mode)
