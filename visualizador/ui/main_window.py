@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QElapsedTimer, QSettings, QTimer
-from PySide6.QtGui import QIcon, QCloseEvent
+from PySide6.QtGui import QIcon, QCloseEvent, QAction, QKeySequence
 from PySide6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
     QScrollArea, QSplitter, QVBoxLayout, QWidget, QMessageBox, QStackedWidget,
@@ -54,12 +54,10 @@ class MainWindow(QMainWindow):
         self._profiles, _active_name = load_profiles()
         self._profile = next((p for p in self._profiles if p.name == _active_name), self._profiles[0])
 
-        self._open_button = QPushButton("Abrir G-code...")
         self._file_label = QLabel("Nenhum arquivo carregado")
         self._file_label.setObjectName("fileLabel")
         self._mode_controls = ModeControls()
         self._dialect_controls = DialectControls()
-        self._settings_button = QPushButton("⚙ Ajustes")
         self._editor_toggle = QPushButton("Editor")
         self._editor_toggle.setObjectName("editorToggle")
         self._editor_toggle.setCheckable(True)
@@ -81,6 +79,7 @@ class MainWindow(QMainWindow):
         self._settings = QSettings(str(config.WINDOW_STATE_FILE), QSettings.Format.IniFormat)
 
         self._build_layout()
+        self._build_menu_bar()
         self._connect_signals()
         self._player.set_speed(self._playback.speed)
         self._player.set_enabled(False)
@@ -147,6 +146,75 @@ class MainWindow(QMainWindow):
         root.addWidget(self._stack, 1)
         root.addWidget(self._player)
         self.setCentralWidget(central)
+
+    def _build_menu_bar(self) -> None:
+        menu_bar = self.menuBar()
+
+        file_menu = menu_bar.addMenu("&Arquivo")
+
+        new_action = QAction("Novo (em branco)", self)
+        new_action.setShortcut(QKeySequence.StandardKey.New)
+        new_action.triggered.connect(self._start_blank)
+        file_menu.addAction(new_action)
+
+        open_action = QAction("Abrir G-code...", self)
+        open_action.setShortcut(QKeySequence.StandardKey.Open)
+        open_action.triggered.connect(lambda: self.open_file())
+        file_menu.addAction(open_action)
+
+        file_menu.addSeparator()
+
+        save_action = QAction("Salvar", self)
+        save_action.triggered.connect(lambda: self._save_edited_text(self._editor.text()))
+        file_menu.addAction(save_action)
+
+        save_as_action = QAction("Salvar como...", self)
+        save_as_action.triggered.connect(lambda: self._save_edited_text_as(self._editor.text()))
+        file_menu.addAction(save_as_action)
+
+        file_menu.addSeparator()
+
+        close_project_action = QAction("Fechar projeto / Redefinir", self)
+        close_project_action.triggered.connect(self._reset_to_start)
+        file_menu.addAction(close_project_action)
+
+        file_menu.addSeparator()
+
+        quit_action = QAction("Sair", self)
+        quit_action.setShortcut(QKeySequence.StandardKey.Quit)
+        quit_action.triggered.connect(self.close)
+        file_menu.addAction(quit_action)
+
+        edit_menu = menu_bar.addMenu("&Editar")
+
+        apply_action = QAction("Aplicar alterações", self)
+        apply_action.triggered.connect(lambda: self._apply_edited_text(self._editor.text()))
+        edit_menu.addAction(apply_action)
+
+        comment_action = QAction("Comentar/descomentar linha(s)", self)
+        comment_action.triggered.connect(self._editor.toggle_comment)
+        edit_menu.addAction(comment_action)
+
+        settings_menu = menu_bar.addMenu("&Configurações")
+
+        settings_action = QAction("Ajustes...", self)
+        settings_action.triggered.connect(self._open_settings)
+        settings_menu.addAction(settings_action)
+
+    def _reset_to_start(self) -> None:
+        """Fecha o projeto atual e volta à tela inicial, esquecendo o último arquivo lembrado."""
+        if not self._confirm_discard_changes():
+            return
+        self._path = None
+        self._text = None
+        self._saved_text = None
+        self._settings.remove("window/last_file")
+        self._file_label.setText("Nenhum arquivo carregado")
+        self._editor.set_text("")
+        self._show_empty()
+        self._header_widget.setVisible(False)
+        self._player.setVisible(False)
+        self._stack.setCurrentIndex(0)
 
     def _enter_workspace(self) -> None:
         """Sai da tela inicial: mostra cabeçalho, área de trabalho e barra de reprodução."""

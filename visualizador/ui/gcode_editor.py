@@ -236,6 +236,10 @@ class GCodeEditor(QFrame):
         self.setVisible(True)
         self._text_edit.goto_line(line)
 
+    def toggle_comment(self) -> None:
+        """Comenta/descomenta a linha ou seleção atual no editor."""
+        self._text_edit.toggle_comment()
+
     def _emit_apply(self) -> None:
         self.apply_requested.emit(self.text())
 
