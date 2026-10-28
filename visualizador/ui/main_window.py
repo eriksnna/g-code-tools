@@ -56,6 +56,9 @@ class MainWindow(QMainWindow):
 
         self._file_label = QLabel("Nenhum arquivo carregado")
         self._file_label.setObjectName("fileLabel")
+        self._profile_label = QLabel()
+        self._profile_label.setObjectName("profileLabel")
+        self._update_profile_label()
         self._mode_controls = ModeControls()
         self._mode_controls.set_mode(self._profile.mode_key)
         self._editor_toggle = QPushButton("Editor")
@@ -277,7 +280,11 @@ class MainWindow(QMainWindow):
         self._profile = dialog.current_profile()
         save_profiles(self._profiles, self._profile.name)
         self._mode_controls.set_mode(self._profile.mode_key)
+        self._update_profile_label()
         self._reload()
+
+    def _update_profile_label(self) -> None:
+        self._profile_label.setText(f"Perfil: {self._profile.name}")
 
     def _on_mode_changed(self) -> None:
         """O usuário trocou o modo (ou um parâmetro de cordão) na tela principal."""
