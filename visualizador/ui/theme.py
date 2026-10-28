@@ -14,6 +14,7 @@ TORCH_COLOR = (0.55, 0.57, 0.62, 1.0)  # cinza metálico
 WIRE_COLOR = (0.95, 0.95, 0.95, 1.0)   # branco
 ERROR_COLOR = "#ff6b6b"
 WARNING_COLOR = "#f0b429"
+ICON_COLOR = "#e6e6e6"  # mesma cor do texto; usada para tingir os ícones (QtAwesome)
 CUT_DEPTH_ALPHA = 0.35  # opacidade dos cortes apagados na coloração por profundidade
 DEPTH_STOPS = (         # do mais fundo ao topo
     (0.25, 0.5, 1.0),

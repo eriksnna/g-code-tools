@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 from config import (
     SPEED_MAX, SPEED_MIN, SPEED_PRESETS, SPEED_SLIDER_SCALE, TIMELINE_STEPS,
 )
+from ui.icons import FAST_FORWARD, PAUSE, PLAY, REWIND, SKIP_BACK, SKIP_FORWARD, icon
 
 PLAY_BUTTON_SIZE = (56, 36)
 TRANSPORT_BUTTON_SIZE = (44, 36)
@@ -51,14 +52,14 @@ class PlayerBar(QFrame):
         )
 
         self._play_button = self._make_button(
-            "▶", "Reproduzir / pausar", self.play_clicked.emit, PLAY_BUTTON_SIZE, name="play",
+            icon(PLAY), "Reproduzir / pausar", self.play_clicked.emit, PLAY_BUTTON_SIZE, name="play",
         )
         self._transport = [
-            self._make_button("⏮", "Ir para o início", self.start_clicked.emit, TRANSPORT_BUTTON_SIZE),
-            self._make_button("⏪", "Retroceder", lambda: self.step_clicked.emit(-1), TRANSPORT_BUTTON_SIZE),
+            self._make_button(icon(SKIP_BACK), "Ir para o início", self.start_clicked.emit, TRANSPORT_BUTTON_SIZE),
+            self._make_button(icon(REWIND), "Retroceder", lambda: self.step_clicked.emit(-1), TRANSPORT_BUTTON_SIZE),
             self._play_button,
-            self._make_button("⏩", "Avançar", lambda: self.step_clicked.emit(1), TRANSPORT_BUTTON_SIZE),
-            self._make_button("⏭", "Ir para o fim", self.end_clicked.emit, TRANSPORT_BUTTON_SIZE),
+            self._make_button(icon(FAST_FORWARD), "Avançar", lambda: self.step_clicked.emit(1), TRANSPORT_BUTTON_SIZE),
+            self._make_button(icon(SKIP_FORWARD), "Ir para o fim", self.end_clicked.emit, TRANSPORT_BUTTON_SIZE),
         ]
 
         self._speed_slider = QSlider(Qt.Orientation.Horizontal)
@@ -106,8 +107,9 @@ class PlayerBar(QFrame):
         return row
 
     @staticmethod
-    def _make_button(glyph: str, tip: str, callback, size, name: str | None = None) -> QPushButton:
-        button = QPushButton(glyph)
+    def _make_button(button_icon, tip: str, callback, size, name: str | None = None) -> QPushButton:
+        button = QPushButton()
+        button.setIcon(button_icon)
         button.setToolTip(tip)
         button.setFixedSize(*size)
         if name:
@@ -133,7 +135,7 @@ class PlayerBar(QFrame):
             widget.setEnabled(enabled)
 
     def set_playing(self, playing: bool) -> None:
-        self._play_button.setText("⏸" if playing else "▶")
+        self._play_button.setIcon(icon(PAUSE if playing else PLAY))
 
     def set_progress(self, fraction: float) -> None:
         with _signals_blocked(self._timeline):

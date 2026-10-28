@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QVBoxLayout, QWidget,
 )
 
+from ui.icons import CLOSE, HELP, icon
 from ui.gcode_highlighter import GCodeHighlighter
 
 EDITOR_FONT_FAMILY = "Consolas"
@@ -206,8 +207,10 @@ class GCodeEditor(QFrame):
         find_prev.clicked.connect(lambda: self._find(forward=False))
         find_next = QPushButton("Próximo >")
         find_next.clicked.connect(lambda: self._find(forward=True))
-        find_close = QPushButton("×")
+        find_close = QPushButton()
+        find_close.setIcon(icon(CLOSE))
         find_close.setFixedWidth(28)
+        find_close.setToolTip("Fechar busca")
         find_close.clicked.connect(self._hide_find_bar)
 
         find_layout = QHBoxLayout()
@@ -240,7 +243,8 @@ class GCodeEditor(QFrame):
         self._save_as_button.setObjectName("saveAsEdit")
         self._save_as_button.clicked.connect(self._emit_save_as)
 
-        self._help_button = QPushButton("?")
+        self._help_button = QPushButton()
+        self._help_button.setIcon(icon(HELP))
         self._help_button.setObjectName("editorHelp")
         self._help_button.setFixedWidth(28)
         self._help_button.setToolTip("Atalhos do editor")

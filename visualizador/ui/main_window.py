@@ -11,6 +11,8 @@ from PySide6.QtWidgets import (
 )
 
 from config import APP_TITLE, DEFAULT_DIALECT, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
+from ui.icons import APPLY, DISCARD, NEW_FILE, OPEN_FILE, QUIT, SAVE, SEARCH, SETTINGS, icon
+
 import config
 from core.layers import depth_levels
 from core.lexer import Issue
@@ -153,11 +155,13 @@ class MainWindow(QMainWindow):
         file_menu = menu_bar.addMenu("&Arquivo")
 
         new_action = QAction("Novo (em branco)", self)
+        new_action.setIcon(icon(NEW_FILE))
         new_action.setShortcut(QKeySequence.StandardKey.New)
         new_action.triggered.connect(self._start_blank)
         file_menu.addAction(new_action)
 
         open_action = QAction("Abrir G-code...", self)
+        open_action.setIcon(icon(OPEN_FILE))
         open_action.setShortcut(QKeySequence.StandardKey.Open)
         open_action.triggered.connect(lambda: self.open_file())
         file_menu.addAction(open_action)
@@ -165,22 +169,26 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
 
         save_action = QAction("Salvar", self)
+        save_action.setIcon(icon(SAVE))
         save_action.triggered.connect(lambda: self._save_edited_text(self._editor.text()))
         file_menu.addAction(save_action)
 
         save_as_action = QAction("Salvar como...", self)
+        save_as_action.setIcon(icon(SAVE))
         save_as_action.triggered.connect(lambda: self._save_edited_text_as(self._editor.text()))
         file_menu.addAction(save_as_action)
 
         file_menu.addSeparator()
 
         close_project_action = QAction("Fechar projeto / Redefinir", self)
+        close_project_action.setIcon(icon(DISCARD))
         close_project_action.triggered.connect(self._reset_to_start)
         file_menu.addAction(close_project_action)
 
         file_menu.addSeparator()
 
         quit_action = QAction("Sair", self)
+        quit_action.setIcon(icon(QUIT))
         quit_action.setShortcut(QKeySequence.StandardKey.Quit)
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
@@ -188,6 +196,7 @@ class MainWindow(QMainWindow):
         edit_menu = menu_bar.addMenu("&Editar")
 
         apply_action = QAction("Aplicar alterações", self)
+        apply_action.setIcon(icon(APPLY))
         apply_action.triggered.connect(lambda: self._apply_edited_text(self._editor.text()))
         edit_menu.addAction(apply_action)
 
@@ -196,12 +205,14 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(comment_action)
 
         find_action = QAction("Localizar... (Ctrl+F)", self)
+        find_action.setIcon(icon(SEARCH))
         find_action.triggered.connect(self._show_editor_find)
         edit_menu.addAction(find_action)
 
         settings_menu = menu_bar.addMenu("&Configurações")
 
         settings_action = QAction("Ajustes...", self)
+        settings_action.setIcon(icon(SETTINGS))
         settings_action.triggered.connect(self._open_settings)
         settings_menu.addAction(settings_action)
 
