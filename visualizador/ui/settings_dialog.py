@@ -30,6 +30,7 @@ from core.machine_profile import DEFAULT_LIMITS, MachineProfile, default_profile
 from core.modes import MODE_CHOICES
 
 SHORTCUTS_TEXT = """\
+Ctrl+F           Buscar texto no editor
 Ctrl+Return      Aplicar o G-code editado
 Ctrl+/           Comentar/descomentar linha(s) selecionadas
 Ctrl+S           Salvar

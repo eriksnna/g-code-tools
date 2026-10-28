@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from PySide6.QtCore import QRect, QSize, Qt, Signal
 from PySide6.QtGui import (
-    QColor, QFont, QKeySequence, QPainter, QShortcut, QTextCharFormat, QTextCursor,
+    QColor, QFont, QKeySequence, QPainter, QShortcut, QTextCharFormat, QTextCursor, QTextDocument,
 )
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton,
+    QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton,
     QTextEdit, QVBoxLayout, QWidget,
 )
 
@@ -15,6 +15,7 @@ from ui.gcode_highlighter import GCodeHighlighter
 EDITOR_FONT_FAMILY = "Consolas"
 EDITOR_FONT_SIZE = 12
 APPLY_SHORTCUT = "Ctrl+Return"
+FIND_SHORTCUT = "Ctrl+F"
 COMMENT_SHORTCUT = "Ctrl+/"
 SAVE_SHORTCUT = "Ctrl+S"
 SAVE_AS_SHORTCUT = "Ctrl+Shift+S"
@@ -25,6 +26,7 @@ GUTTER_TEXT = QColor("#555c6b")
 CURRENT_LINE_BACKGROUND = QColor("#23262f")
 
 SHORTCUTS_TEXT = (
+    f"{FIND_SHORTCUT}   Buscar texto no editor\n"
     f"{APPLY_SHORTCUT}   Aplicar as alterações e reinterpretar o programa\n"
     f"{COMMENT_SHORTCUT}   Comentar ou descomentar a linha atual (ou a seleção)\n"
     f"{SAVE_SHORTCUT}   Salvar no arquivo aberto\n"
@@ -171,6 +173,35 @@ class GCodeEditor(QFrame):
         self._text_edit.modificationChanged.connect(self._on_modified)
         self._highlighter = GCodeHighlighter(self._text_edit.document())
 
+        self._find_input = QLineEdit()
+        self._find_input.setPlaceholderText("Buscar no G-code...")
+        self._find_input.returnPressed.connect(lambda: self._find(forward=True))
+        self._find_status = QLabel("")
+        self._find_status.setObjectName("findStatus")
+
+        find_prev = QPushButton("< Anterior")
+        find_prev.clicked.connect(lambda: self._find(forward=False))
+        find_next = QPushButton("Próximo >")
+        find_next.clicked.connect(lambda: self._find(forward=True))
+        find_close = QPushButton("×")
+        find_close.setFixedWidth(28)
+        find_close.clicked.connect(self._hide_find_bar)
+
+        find_layout = QHBoxLayout()
+        find_layout.setContentsMargins(0, 0, 0, 0)
+        find_layout.setSpacing(6)
+        find_layout.addWidget(QLabel("Buscar:"))
+        find_layout.addWidget(self._find_input, 1)
+        find_layout.addWidget(find_prev)
+        find_layout.addWidget(find_next)
+        find_layout.addWidget(self._find_status)
+        find_layout.addWidget(find_close)
+
+        self._find_bar = QWidget()
+        self._find_bar.setObjectName("findBar")
+        self._find_bar.setLayout(find_layout)
+        self._find_bar.setVisible(False)
+
         self._status_label = QLabel("")
         self._status_label.setObjectName("editorStatus")
 
@@ -198,6 +229,11 @@ class GCodeEditor(QFrame):
         )
         QShortcut(QKeySequence(SAVE_SHORTCUT), self._text_edit).activated.connect(self._emit_save)
         QShortcut(QKeySequence(SAVE_AS_SHORTCUT), self._text_edit).activated.connect(self._emit_save_as)
+        QShortcut(QKeySequence(FIND_SHORTCUT), self._text_edit).activated.connect(self._show_find_bar)
+        QShortcut(QKeySequence("Escape"), self._find_input).activated.connect(self._hide_find_bar)
+        QShortcut(QKeySequence("Shift+Return"), self._find_input).activated.connect(
+            lambda: self._find(forward=False)
+        )
 
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
@@ -213,6 +249,7 @@ class GCodeEditor(QFrame):
         layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(6)
         layout.addLayout(toolbar)
+        layout.addWidget(self._find_bar)
         layout.addWidget(self._text_edit, 1)
 
     def set_text(self, text: str) -> None:
@@ -235,6 +272,37 @@ class GCodeEditor(QFrame):
         """Mostra o editor, se escondido, e vai até a linha (1-based)."""
         self.setVisible(True)
         self._text_edit.goto_line(line)
+
+    def show_find(self) -> None:
+        """Mostra a barra de busca (equivalente a pressionar Ctrl+F com foco no editor)."""
+        self.setVisible(True)
+        self._show_find_bar()
+
+    def _show_find_bar(self) -> None:
+        self._find_bar.setVisible(True)
+        self._find_input.setFocus()
+        self._find_input.selectAll()
+
+    def _hide_find_bar(self) -> None:
+        self._find_bar.setVisible(False)
+        self._find_status.setText("")
+        self._text_edit.setFocus()
+
+    def _find(self, forward: bool = True) -> None:
+        text = self._find_input.text()
+        if not text:
+            return
+        flags = QTextDocument.FindFlag(0) if forward else QTextDocument.FindFlag.FindBackward
+        found = self._text_edit.find(text, flags)
+        if not found:
+            # não achou dali pra frente/trás: volta pro início/fim e tenta de novo (busca circular)
+            cursor = self._text_edit.textCursor()
+            cursor.movePosition(
+                QTextCursor.MoveOperation.Start if forward else QTextCursor.MoveOperation.End
+            )
+            self._text_edit.setTextCursor(cursor)
+            found = self._text_edit.find(text, flags)
+        self._find_status.setText("" if found else "Não encontrado")
 
     def toggle_comment(self) -> None:
         """Comenta/descomenta a linha ou seleção atual no editor."""

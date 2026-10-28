@@ -195,6 +195,10 @@ class MainWindow(QMainWindow):
         comment_action.triggered.connect(self._editor.toggle_comment)
         edit_menu.addAction(comment_action)
 
+        find_action = QAction("Localizar... (Ctrl+F)", self)
+        find_action.triggered.connect(self._show_editor_find)
+        edit_menu.addAction(find_action)
+
         settings_menu = menu_bar.addMenu("&Configurações")
 
         settings_action = QAction("Ajustes...", self)
@@ -526,3 +530,7 @@ class MainWindow(QMainWindow):
             return
         self._settings.setValue("window/geometry", self.saveGeometry())
         event.accept()
+
+    def _show_editor_find(self) -> None:
+        self._editor_toggle.setChecked(True)
+        self._editor.show_find()
