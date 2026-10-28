@@ -429,6 +429,7 @@ class MainWindow(QMainWindow):
         self._layer_controls.set_levels([])
         self._player.set_enabled(False)
         self._player.set_status("Nenhum movimento encontrado no arquivo.")
+        self._editor.set_running_line(None)
 
     # --- validação ---
 
@@ -502,7 +503,16 @@ class MainWindow(QMainWindow):
         self._stats_panel.show_progress(
             pb.elapsed, pb.total_time, snapshot.done, self._toolpath.count,
         )
+        self._update_running_line(snapshot)
         self._sync_timer()
+
+    def _update_running_line(self, snapshot: Snapshot) -> None:
+        """Destaca no editor a linha de origem do movimento atualmente em execução."""
+        if self._toolpath is None or self._toolpath.count == 0:
+            self._editor.set_running_line(None)
+            return
+        index = min(max(snapshot.done, 0), self._toolpath.count - 1)
+        self._editor.set_running_line(int(self._toolpath.lines[index]))
 
     def _sync_timer(self) -> None:
         if self._playback.playing and not self._timer.isActive():

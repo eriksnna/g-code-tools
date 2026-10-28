@@ -24,6 +24,8 @@ GUTTER_PADDING = 12
 GUTTER_BACKGROUND = QColor("#191b21")
 GUTTER_TEXT = QColor("#555c6b")
 CURRENT_LINE_BACKGROUND = QColor("#23262f")
+RUNNING_LINE_BACKGROUND = QColor("#3a2f12")
+
 
 SHORTCUTS_TEXT = (
     f"{FIND_SHORTCUT}   Buscar texto no editor\n"
@@ -54,6 +56,8 @@ class _CodeTextEdit(QPlainTextEdit):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._gutter = _LineNumberGutter(self)
+        self._cursor_selection: QTextEdit.ExtraSelection | None = None
+        self._running_selection: QTextEdit.ExtraSelection | None = None
         self.blockCountChanged.connect(self._update_gutter_width)
         self.updateRequest.connect(self._update_gutter_area)
         self.cursorPositionChanged.connect(self._highlight_current_line)
@@ -145,13 +149,32 @@ class _CodeTextEdit(QPlainTextEdit):
         if rect.contains(self.viewport().rect()):
             self._update_gutter_width()
 
+    def set_running_line(self, line: int | None) -> None:
+        """Destaca a linha de origem do movimento em execução (None remove o destaque)."""
+        block = self.document().findBlockByNumber(max(0, line - 1)) if line is not None else None
+        if block is not None and block.isValid():
+            selection = QTextEdit.ExtraSelection()
+            selection.format.setBackground(RUNNING_LINE_BACKGROUND)
+            selection.format.setProperty(QTextCharFormat.Property.FullWidthSelection, True)
+            selection.cursor = QTextCursor(block)
+            selection.cursor.clearSelection()
+            self._running_selection = selection
+        else:
+            self._running_selection = None
+        self._apply_extra_selections()
+
     def _highlight_current_line(self) -> None:
         selection = QTextEdit.ExtraSelection()
         selection.format.setBackground(CURRENT_LINE_BACKGROUND)
         selection.format.setProperty(QTextCharFormat.Property.FullWidthSelection, True)
         selection.cursor = self.textCursor()
         selection.cursor.clearSelection()
-        self.setExtraSelections([selection])
+        self._cursor_selection = selection
+        self._apply_extra_selections()
+
+    def _apply_extra_selections(self) -> None:
+        selections = [s for s in (self._cursor_selection, self._running_selection) if s is not None]
+        self.setExtraSelections(selections)
 
 
 class GCodeEditor(QFrame):
@@ -256,6 +279,7 @@ class GCodeEditor(QFrame):
         """Carrega um novo texto, sem marcar como alterado (uso ao abrir um arquivo)."""
         self._text_edit.setPlainText(text)
         self._text_edit.document().setModified(False)
+        self._text_edit.set_running_line(None)
 
     def text(self) -> str:
         return self._text_edit.toPlainText()
@@ -272,6 +296,10 @@ class GCodeEditor(QFrame):
         """Mostra o editor, se escondido, e vai até a linha (1-based)."""
         self.setVisible(True)
         self._text_edit.goto_line(line)
+
+    def set_running_line(self, line: int | None) -> None:
+        """Destaca no editor a linha do movimento em execução (None remove o destaque)."""
+        self._text_edit.set_running_line(line)
 
     def show_find(self) -> None:
         """Mostra a barra de busca (equivalente a pressionar Ctrl+F com foco no editor)."""

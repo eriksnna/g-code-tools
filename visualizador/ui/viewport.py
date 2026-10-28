@@ -190,9 +190,9 @@ class ToolpathView(gl.GLViewWidget):
         self._torch_item.resetTransform()
         # 1) move a ponta (origem local) até o ponto alvo
         self._torch_item.translate(float(tip[0]), float(tip[1]), float(tip[2]))
-        # 2) gira o corpo ao redor dessa ponta: primeiro inclina (eixo Y local),
-        #    depois orienta a inclinação na direção do deslocamento (eixo Z do mundo)
-        self._torch_item.rotate(heading_deg, 0, 0, 1, local=False)
+        # 2) gira o corpo ao redor dessa ponta: local=True em ambas as rotações garante que
+        #    elas pivotam no ponto já transladado (tip), não na origem do mundo
+        self._torch_item.rotate(heading_deg, 0, 0, 1, local=True)
         self._torch_item.rotate(TORCH_MAX_TILT_DEG, 0, 1, 0, local=True)
         self._torch_item.setVisible(True)
 
