@@ -397,10 +397,16 @@ Novidades:
 
 2. **Correção de bugs gerais**
 
-### 23/10 — sexta-feira a 24/10 — domingo - Adição de tela de ajustes (~12h)
+### 23/10 — sexta-feira a 24/10 — sábado - Adição de tela de ajustes (~12h)
 
 **Novidades:**
 
 - Nova tela de ajuste;
 - Persistência de perfis em json (salvo em ``%APPDATA%\GCodeTools\profiles.json``);
-- Persistência de arquivos e último estado da tela;
+
+### 25/10 — domingo - Adição de barra de menu (~7h)
+
+1. **Nova barra de menu**:
+
+- Agora é possivel acessar as opções Arquivo, Editar e Ajustes
+- Permanência de perfil com Modo, Dialeto e Limites
