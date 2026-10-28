@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QElapsedTimer, QTimer
+from PySide6.QtCore import Qt, QElapsedTimer, QSettings, QTimer
 from PySide6.QtGui import QIcon, QCloseEvent
 from PySide6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from config import APP_TITLE, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
+import config
 from core.layers import depth_levels
 from core.lexer import Issue
 from core.modes import apply_mode
@@ -77,12 +78,14 @@ class MainWindow(QMainWindow):
         self._timer.setInterval(TICK_MS)
         self._timer.timeout.connect(self._on_tick)
         self._frame_clock = QElapsedTimer()
+        self._settings = QSettings(str(config.WINDOW_STATE_FILE), QSettings.Format.IniFormat)
 
         self._build_layout()
         self._connect_signals()
         self._player.set_speed(self._playback.speed)
         self._player.set_enabled(False)
         self._layer_controls.set_levels([])
+        self._restore_window_state()
 
     # --- montagem ---
 
@@ -151,6 +154,17 @@ class MainWindow(QMainWindow):
         self._player.setVisible(True)
         self._stack.setCurrentIndex(1)
 
+    def _restore_window_state(self) -> None:
+        """Restaura a geometria da janela e reabre o último arquivo, se ele ainda existir."""
+        geometry = self._settings.value("window/geometry")
+        if geometry is not None:
+            self.restoreGeometry(geometry)
+        last_file = self._settings.value("window/last_file")
+        if last_file:
+            path = Path(str(last_file))
+            if path.exists():
+                self.load_file(path)
+
     def _connect_signals(self) -> None:
         self._open_button.clicked.connect(lambda _checked=False: self.open_file())
         self._mode_controls.changed.connect(self._reload)
@@ -207,6 +221,7 @@ class MainWindow(QMainWindow):
         if not self._confirm_discard_changes():
             return
         self._path = None
+        self._settings.remove("window/last_file")
         self._text = ""
         self._saved_text = ""
         self._file_label.setText("Novo programa (não salvo)")
@@ -232,6 +247,7 @@ class MainWindow(QMainWindow):
         self._text = text
         self._saved_text = text
         self._file_label.setText(str(path))
+        self._settings.setValue("window/last_file", str(path))
         self._editor.set_text(text)
         self._enter_workspace()
         self._reload()
@@ -431,4 +447,5 @@ class MainWindow(QMainWindow):
         if self._has_unsaved_changes() and not self._confirm_discard_changes():
             event.ignore()
             return
+        self._settings.setValue("window/geometry", self.saveGeometry())
         event.accept()

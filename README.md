@@ -402,4 +402,5 @@ Novidades:
 **Novidades:**
 
 - Nova tela de ajuste;
-- Persistência de perfis em json (salvo em ``%APPDATA%\GCodeTools\profiles.json``)
+- Persistência de perfis em json (salvo em ``%APPDATA%\GCodeTools\profiles.json``);
+- Persistência de arquivos e último estado da tela;

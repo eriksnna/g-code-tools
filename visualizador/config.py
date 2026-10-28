@@ -67,3 +67,5 @@ TORCH_MAX_TILT_DEG = 8.0   # inclinação sutil, só para indicar a direção
 # Segurança: limites para evitar que um arquivo malicioso ou corrompido trave o app
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024   # 20 MB; G-code real raramente passa disso
 MAX_LINE_LENGTH = 10_000                 # caracteres; uma linha absurda indica arquivo corrompido/hostil
+
+WINDOW_STATE_FILE = CONFIG_DIR / "window_state.ini"
