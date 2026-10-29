@@ -1,0 +1,27 @@
+Este projeto depende das seguintes bibliotecas de terceiros:
+
+- PySide6 (Qt for Python) — LGPLv3
+  https://www.qt.io/licensing/
+  As bibliotecas Qt usadas por este projeto são carregadas dinamicamente
+  (arquivos separados, não embutidas num único binário), conforme exigido
+  pela LGPLv3. O código deste projeto não é afetado pela licença do Qt.
+
+- NumPy — BSD 3-Clause
+  https://numpy.org/
+
+- pyqtgraph — MIT
+  https://www.pyqtgraph.org/
+
+- PyOpenGL — BSD-style
+  https://pyopengl.sourceforge.net/
+
+- QtAwesome — MIT
+  https://github.com/spyder-ide/qtawesome
+  Os ícones Font Awesome empacotados por esta biblioteca estão sob
+  SIL OFL 1.1 (fontes) e CC BY 4.0 (ícones): https://fontawesome.com/license/free
+
+Ferramenta usada apenas para gerar o executável (não é dependência do código-fonte):
+
+- PyInstaller — GPL, com exceção explícita que permite distribuir o
+  executável gerado sem ele próprio precisar ser GPL.
+  https://pyinstaller.org/en/stable/license.html
