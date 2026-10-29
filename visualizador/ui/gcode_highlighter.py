@@ -1,8 +1,6 @@
 """Realce de sintaxe para G-code: comentários, G/M-codes, eixos, variáveis e sub-rotinas."""
 from __future__ import annotations
 
-import re
-
 from PySide6.QtCore import QRegularExpression
 from PySide6.QtGui import QColor, QFont, QSyntaxHighlighter, QTextCharFormat
 

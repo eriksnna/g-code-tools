@@ -30,6 +30,24 @@ DIALECTS: dict[str, Dialect] = {
         process_on=frozenset({8}),
         process_off=frozenset({9}),
     ),
+    "fanuc": Dialect(
+    name="Fanuc / Haas (P em milissegundos)",
+    dwell_unit=0.001,            # G04 P é em ms nesses controladores, não em s
+    process_on=frozenset({3, 4}),
+    process_off=frozenset({5}),
+    ),
+    "plasma-m3-m5": Dialect(
+        name="Plasma (tocha em M3/M5)",
+        dwell_unit=1.0,
+        process_on=frozenset({3}),   # plasma geralmente só liga em M3, sem M4
+        process_off=frozenset({5}),
+    ),
+    "waam-m10-m11": Dialect(
+        name="WAAM (arco em M10/M11)",
+        dwell_unit=1.0,
+        process_on=frozenset({10}),
+        process_off=frozenset({11}),
+    ),
 }
 
 

@@ -158,7 +158,6 @@ class ToolpathView(gl.GLViewWidget):
 
     # --- renderização ---
 
-    # depois
     def render(self, snapshot: Snapshot) -> None:
         self._snapshot = snapshot
         if self._toolpath is None:

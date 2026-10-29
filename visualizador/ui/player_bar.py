@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 from config import (
     SPEED_MAX, SPEED_MIN, SPEED_PRESETS, SPEED_SLIDER_SCALE, TIMELINE_STEPS,
 )
-from ui.theme import ACCENT, ACCENT_HOVER, SURFACE_2, TEXT_MUTED
+from ui.theme import ACCENT, SURFACE_2, TEXT_MUTED
 from ui.icons import FAST_FORWARD, PAUSE, PLAY, REWIND, SKIP_BACK, SKIP_FORWARD, icon
 
 PLAY_BUTTON_SIZE = (48, 48)
@@ -70,7 +70,6 @@ class _Slider(QSlider):
             painter.setBrush(QColor(ACCENT if self.isEnabled() else TEXT_MUTED))
             painter.drawRoundedRect(filled, radius, radius)
 
-        handle_color = ACCENT_HOVER if self.isEnabled() else TEXT_MUTED
         painter.setBrush(QColor("#ffffff" if self.isEnabled() else TEXT_MUTED))
         painter.drawEllipse(QPointF(handle_x, self.height() / 2), self.HANDLE_RADIUS, self.HANDLE_RADIUS)
         painter.end()

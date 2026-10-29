@@ -50,9 +50,15 @@ class ModeControls(QWidget):
         return create_mode(self._combo.currentData(), bead)
 
     def set_mode(self, key: str) -> None:
+        """Define o modo programaticamente, sem emitir `changed` (evita salvar/recarregar
+        de novo quando quem chamou já vai fazer isso, como em MainWindow._open_settings)."""
         index = self._combo.findData(key)
-        if index >= 0:
+        if index >= 0 and index != self._combo.currentIndex():
+            self._combo.blockSignals(True)
             self._combo.setCurrentIndex(index)
+            self._combo.blockSignals(False)
+            self._update_visibility()
+            self._signature = self._current_signature()
 
     def _make_spin(self, low: float, high: float, value: float, suffix: str) -> QDoubleSpinBox:
         spin = QDoubleSpinBox()

@@ -108,7 +108,6 @@ QListWidget {{
 QListWidget::item {{ padding: 6px 10px; border-radius: 6px; }}
 QListWidget::item:hover {{ background: {SURFACE_3}; }}
 QListWidget::item:selected {{ background: {ACCENT}; color: #ffffff; }}
-QListWidget#warnings {{ color: {WARNING_COLOR}; }}
 
 QComboBox {{
     background: {SURFACE_2}; color: {TEXT_PRIMARY};

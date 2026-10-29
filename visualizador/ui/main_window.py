@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QScrollArea, QSplitter, QVBoxLayout, QWidget, QMessageBox, QStackedWidget,
 )
 
-from config import APP_TITLE, DEFAULT_DIALECT, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
+from config import APP_TITLE, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
 from ui.icons import APPLY, DISCARD, NEW_FILE, OPEN_FILE, QUIT, SAVE, SEARCH, SETTINGS, icon
 
 import config
@@ -27,7 +27,6 @@ from ui.gcode_editor import GCodeEditor
 from ui.issues_panel import IssuesPanel
 from ui.layer_controls import LayerControls
 from ui.mode_controls import ModeControls
-from core.machine_profile import MachineProfile
 from core.profile_store import load_profiles, save_profiles
 from ui.settings_dialog import SettingsDialog
 from ui.player_bar import PlayerBar
@@ -107,6 +106,9 @@ class MainWindow(QMainWindow):
         header.addWidget(self._mode_controls)
         header.addWidget(self._editor_toggle)
         header.addWidget(self._layer_controls)
+        header.addWidget(self._file_label, 1)
+        header.addWidget(self._profile_label)
+        header.addWidget(self._mode_controls)
 
         stats_scroll = QScrollArea()
         stats_scroll.setWidgetResizable(True)

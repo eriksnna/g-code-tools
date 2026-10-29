@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.dialect import DIALECT_CHOICES
-from core.machine_profile import DEFAULT_LIMITS, MachineProfile, default_profiles
+from core.machine_profile import MachineProfile, default_profiles
 from core.modes import MODE_CHOICES
 
 SHORTCUTS_TEXT = """\
