@@ -6,7 +6,7 @@ Ferramenta de visualização e simulação 3D de programas G-code.
 
 ### Instalação e uso
 
-`git clone github.com/eriksnna/g-path`
+`git clone https://github.com/eriksnna/g-path`
 
 `cd g-code-tools`
 
