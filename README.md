@@ -410,3 +410,9 @@ Novidades:
 
 - Agora é possivel acessar as opções Arquivo, Editar e Ajustes
 - Permanência de perfil com Modo, Dialeto e Limites
+
+### 26/10 — segunda-feira - Adições extras e ajustes gerais (~6h)
+
+1. **Aparência:**
+
+- Novos ícones;

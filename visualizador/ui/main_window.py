@@ -251,7 +251,6 @@ class MainWindow(QMainWindow):
     def _connect_signals(self) -> None:
         self._mode_controls.changed.connect(self._on_mode_changed)
         self._editor_toggle.toggled.connect(self._editor.setVisible)
-        self._editor.apply_requested.connect(lambda _text: self._editor_toggle.setChecked(True))
         self._editor.save_requested.connect(self._save_edited_text)
         self._editor.save_as_requested.connect(self._save_edited_text_as)
         self._editor.apply_requested.connect(self._apply_edited_text)
