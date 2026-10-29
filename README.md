@@ -402,17 +402,18 @@ Novidades:
 **Novidades:**
 
 - Nova tela de ajuste;
-- Persistência de perfis em json (salvo em ``%APPDATA%\GCodeTools\profiles.json``);
+- Persistência de perfis em json (salvo em ``%APPDATA%\GCodeTools\profiles.json``)
 
 ### 25/10 — domingo - Adição de barra de menu (~7h)
 
 1. **Nova barra de menu**:
 
-- Agora é possivel acessar as opções Arquivo, Editar e Ajustes
+- Agora é possivel acessar as opções Arquivo, Editar e Ajustes;
 - Permanência de perfil com Modo, Dialeto e Limites
 
-### 26/10 — segunda-feira - Adições extras e ajustes gerais (~6h)
+### 26/10 — segunda-feira a 29/10 — quinta-feira - Adições extras e ajustes gerais (~20h)
 
 1. **Aparência:**
 
 - Novos ícones;
+- Página inicial repaginada;

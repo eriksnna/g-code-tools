@@ -16,11 +16,10 @@ CONTENT_WIDTH = 360
 BUTTON_WIDTH = 280
 BUTTON_HEIGHT = 48
 BUTTON_SPACING = 12
-BLOB_TICK_MS = 50  # ~20 fps: suave o bastante, leve o bastante
+BLOB_TICK_MS = 50
 
 
 class _LiquidBackground(QFrame):
-    """Fundo com manchas de gradiente se movendo devagar atrás do conteúdo."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -46,7 +45,6 @@ class _LiquidBackground(QFrame):
         w, h = self.width(), self.height()
         painter.fillRect(self.rect(), QColor(SURFACE_0))
 
-        # névoa ambiente: um gradiente grande e sutil centralizado, pra suavizar os cantos
         ambient_radius = math.hypot(w, h) * 0.75
         ambient = QRadialGradient(w / 2, h / 2, ambient_radius)
         glow = QColor(SURFACE_1)
@@ -104,7 +102,7 @@ class StartPanel(QFrame):
         open_button.setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT)
         open_button.clicked.connect(self.open_requested.emit)
 
-        blank_button = QPushButton("Começar do zero (editor)")
+        blank_button = QPushButton("Começar do zero")
         blank_button.setObjectName("startButtonSecondary")
         blank_button.setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT)
         blank_button.clicked.connect(self.blank_requested.emit)
