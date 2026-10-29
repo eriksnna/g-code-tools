@@ -8,7 +8,7 @@ Ferramenta de visualização e simulação 3D de programas G-code.
 
 `git clone https://github.com/eriksnna/g-path`
 
-`cd g-code-tools`
+`cd g-path`
 
 `pip install -r requirements.txt`
 
