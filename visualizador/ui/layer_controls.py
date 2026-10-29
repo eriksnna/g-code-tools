@@ -7,7 +7,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QCheckBox, QComboBox, QHBoxLayout, QLabel, QWidget
 
 ALL_LAYERS_TEXT = "Todas as camadas"
-COMBO_MIN_WIDTH = 200
+COMBO_MIN_WIDTH = 140
 
 
 class LayerControls(QWidget):

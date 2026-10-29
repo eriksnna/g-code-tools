@@ -14,7 +14,7 @@ Ferramenta de visualização e simulação 3D de programas G-code.
 
 Execute o arquivo: ``python main.py``
 
-Em seguida, carregue um arquivo **G-Code** (.nc, .gcode, etc.) ou use o arquivo de exemplo: ``cubo-sample.nc``).
+Em seguida, carregue um arquivo **G-Code** (.nc, .gcode, etc.) ou use a pasta de exemplo: ``exemples/``).
 
 Diário de Dev 🤠👇👇
 

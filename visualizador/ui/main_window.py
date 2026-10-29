@@ -8,6 +8,7 @@ from PySide6.QtGui import QIcon, QCloseEvent, QAction, QKeySequence
 from PySide6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
     QScrollArea, QSplitter, QVBoxLayout, QWidget, QMessageBox, QStackedWidget,
+    QLayout
 )
 
 from config import APP_TITLE, GCODE_FILTER, ICON_PATH, TICK_MS, WINDOW_SIZE
@@ -35,6 +36,27 @@ from ui.theme import DARK_QSS
 from ui.viewport import ToolpathView
 from ui.start_panel import StartPanel
 
+class _ElidingLabel(QLabel):
+    def __init__(self, text: str = "", parent=None) -> None:
+        super().__init__(parent)
+        self._full_text = text
+        self.setMinimumWidth(60)
+        super().setText(text)
+
+    def setText(self, text: str) -> None:
+        self._full_text = text
+        self._update_elided_text()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._update_elided_text()
+
+    def _update_elided_text(self) -> None:
+        elided = self.fontMetrics().elidedText(
+            self._full_text, Qt.TextElideMode.ElideMiddle, self.width()
+        )
+        super().setText(elided)
+        self.setToolTip(self._full_text)
 
 class MainWindow(QMainWindow):
 
@@ -55,7 +77,7 @@ class MainWindow(QMainWindow):
         self._profiles, _active_name = load_profiles()
         self._profile = next((p for p in self._profiles if p.name == _active_name), self._profiles[0])
 
-        self._file_label = QLabel("Nenhum arquivo carregado")
+        self._file_label = _ElidingLabel("Nenhum arquivo carregado")
         self._file_label.setObjectName("fileLabel")
         self._profile_label = QLabel()
         self._profile_label.setObjectName("profileLabel")
@@ -99,16 +121,15 @@ class MainWindow(QMainWindow):
         root = QVBoxLayout(central)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
+        root.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
 
         header = QHBoxLayout()
         header.setSpacing(10)
         header.addWidget(self._file_label, 1)
+        header.addWidget(self._profile_label)
         header.addWidget(self._mode_controls)
         header.addWidget(self._editor_toggle)
         header.addWidget(self._layer_controls)
-        header.addWidget(self._file_label, 1)
-        header.addWidget(self._profile_label)
-        header.addWidget(self._mode_controls)
 
         stats_scroll = QScrollArea()
         stats_scroll.setWidgetResizable(True)
@@ -121,9 +142,9 @@ class MainWindow(QMainWindow):
         side.addWidget(self._issues_panel)
         side.setStretchFactor(0, 1)
         side.setStretchFactor(1, 1)
-        side.setChildrenCollapsible(False)
+        side.setChildrenCollapsible(True)
 
-        self._viewport.setMinimumSize(400, 200)
+        self._viewport.setMinimumSize(280, 180)
         main_area = QSplitter(Qt.Orientation.Vertical)
         main_area.addWidget(self._viewport)
         main_area.addWidget(self._editor)
@@ -136,7 +157,7 @@ class MainWindow(QMainWindow):
         body.addWidget(side)
         body.setStretchFactor(0, 1)
         body.setSizes([760, 320])
-        body.setChildrenCollapsible(False)
+        body.setChildrenCollapsible(True)
 
         self._header_widget = QWidget()
         self._header_widget.setLayout(header)
@@ -330,7 +351,7 @@ class MainWindow(QMainWindow):
         self._editor.set_text("")
         self._editor_toggle.setChecked(True)
         self._enter_workspace()
-        self._show_empty()
+        self._show_empty(status="Programa novo. Escreva no editor e aplique (Ctrl+Enter).")
 
     def load_file(self, path: Path) -> None:
         if not self._confirm_discard_changes():
@@ -446,13 +467,13 @@ class MainWindow(QMainWindow):
         self._player.set_enabled(True)
         self._refresh()
 
-    def _show_empty(self) -> None:
+    def _show_empty(self, status: str = "Nenhum movimento encontrado no arquivo.") -> None:
         self._toolpath = None
         self._viewport.clear()
         self._stats_panel.clear()
         self._layer_controls.set_levels([])
         self._player.set_enabled(False)
-        self._player.set_status("Nenhum movimento encontrado no arquivo.")
+        self._player.set_status(status)
         self._editor.set_running_line(None)
 
     # --- validação ---

@@ -9,7 +9,7 @@ from core.stats import ProgramStats, format_duration, format_length
 
 from core.modes.base import ModeCard
 
-PANEL_MIN_WIDTH = 240
+PANEL_MIN_WIDTH = 180
 PROGRESS_STEPS = 1000
 EMPTY_VALUE = "—"
 VALUE_MIN_PX = 12
