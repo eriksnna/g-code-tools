@@ -70,6 +70,9 @@ class ToolpathView(gl.GLViewWidget):
         self._rapid_item: gl.GLLinePlotItem | None = None
         self._head: gl.GLScatterPlotItem | None = None
 
+        self._last_started: int | None = None
+        self._colors_dirty = True    
+
         self._depth_coloring = False
         self._layer_filter: int | None = None
         self._snapshot: Snapshot | None = None
@@ -98,6 +101,8 @@ class ToolpathView(gl.GLViewWidget):
         self._levels = np.asarray(levels, dtype=float)
         self._layer_of = layer_indices(toolpath, self._levels)
         self._layer_filter = None
+        self._last_started = None
+        self._colors_dirty = True
         self._last_tilt_xy = np.array([0.0, 0.0])
         self._build_colors()
 
@@ -135,11 +140,12 @@ class ToolpathView(gl.GLViewWidget):
     def set_depth_coloring(self, enabled: bool) -> None:
         self._depth_coloring = enabled
         self._build_colors()
+        self._colors_dirty = True
         self._redraw()
 
     def set_layer_filter(self, index: int | None) -> None:
-        """Mostra só os cortes de uma camada; None mostra todas."""
         self._layer_filter = index
+        self._colors_dirty = True
         self._redraw()
 
     def set_show_torch(self, enabled: bool) -> None:
@@ -152,20 +158,25 @@ class ToolpathView(gl.GLViewWidget):
 
     # --- renderização ---
 
+    # depois
     def render(self, snapshot: Snapshot) -> None:
         self._snapshot = snapshot
         if self._toolpath is None:
             return
 
-        lit = np.arange(self._toolpath.count) < snapshot.started
-        colors = np.where(lit[:, None], self._bright, self._dim)
+        if self._colors_dirty or snapshot.started != self._last_started:
+            self._last_started = snapshot.started
+            self._colors_dirty = False
+            lit = np.arange(self._toolpath.count) < snapshot.started
+            colors = np.where(lit[:, None], self._bright, self._dim)
 
-        if self._layer_filter is not None:
-            hidden = self._is_cut & (self._layer_of != self._layer_filter)
-            colors[hidden, 3] = 0.0
+            if self._layer_filter is not None:
+                hidden = self._is_cut & (self._layer_of != self._layer_filter)
+                colors[hidden, 3] = 0.0
 
-        self._set_item_colors(self._cut_item, colors, self._is_cut)
-        self._set_item_colors(self._rapid_item, colors, ~self._is_cut)
+            self._set_item_colors(self._cut_item, colors, self._is_cut)
+            self._set_item_colors(self._rapid_item, colors, ~self._is_cut)
+
         if self._head is not None:
             color = ARC_HEAD_COLOR if snapshot.active else HEAD_COLOR
             self._head.setData(

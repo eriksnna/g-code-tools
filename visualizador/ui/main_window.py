@@ -250,7 +250,7 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self) -> None:
         self._mode_controls.changed.connect(self._on_mode_changed)
-        self._editor_toggle.toggled.connect(self._editor.setVisible)
+        self._editor_toggle.toggled.connect(self._on_editor_toggled)    
         self._editor.save_requested.connect(self._save_edited_text)
         self._editor.save_as_requested.connect(self._save_edited_text_as)
         self._editor.apply_requested.connect(self._apply_edited_text)
@@ -396,7 +396,7 @@ class MainWindow(QMainWindow):
         return self._text != self._saved_text
 
     def _update_title(self) -> None:
-        mark = "● " if self._has_unsaved_changes() else ""
+        mark = "* " if self._has_unsaved_changes() else ""
         self.setWindowTitle(f"{mark}{APP_TITLE}")
 
     def _reload(self) -> None:
@@ -518,6 +518,8 @@ class MainWindow(QMainWindow):
 
     def _update_running_line(self, snapshot: Snapshot) -> None:
         """Destaca no editor a linha de origem do movimento atualmente em execução."""
+        if not self._editor.isVisible():
+            return
         if self._toolpath is None or self._toolpath.count == 0:
             self._editor.set_running_line(None)
             return
@@ -554,3 +556,8 @@ class MainWindow(QMainWindow):
     def _show_editor_find(self) -> None:
         self._editor_toggle.setChecked(True)
         self._editor.show_find()
+
+    def _on_editor_toggled(self, visible: bool) -> None:
+        self._editor.setVisible(visible)
+        if visible and self._toolpath is not None:
+            self._update_running_line(self._toolpath.snapshot(self._playback.elapsed))

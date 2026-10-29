@@ -4,7 +4,8 @@ from __future__ import annotations
 import math
 from contextlib import contextmanager
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QSlider, QVBoxLayout,
 )
@@ -12,10 +13,11 @@ from PySide6.QtWidgets import (
 from config import (
     SPEED_MAX, SPEED_MIN, SPEED_PRESETS, SPEED_SLIDER_SCALE, TIMELINE_STEPS,
 )
+from ui.theme import ACCENT, ACCENT_HOVER, SURFACE_2, TEXT_MUTED
 from ui.icons import FAST_FORWARD, PAUSE, PLAY, REWIND, SKIP_BACK, SKIP_FORWARD, icon
 
-PLAY_BUTTON_SIZE = (56, 36)
-TRANSPORT_BUTTON_SIZE = (44, 36)
+PLAY_BUTTON_SIZE = (48, 48)
+TRANSPORT_BUTTON_SIZE = (40, 40)
 PRESET_BUTTON_SIZE = (46, 26)
 SPEED_SLIDER_WIDTH = 160
 SPEED_LABEL_WIDTH = 44
@@ -30,6 +32,70 @@ def _signals_blocked(widget):
     finally:
         widget.blockSignals(previous)
 
+class _Slider(QSlider):
+    """Slider com desenho próprio — o Fusion não respeita bem o QSS de groove no Windows."""
+
+    TRACK_HEIGHT = 6
+    HANDLE_RADIUS = 8
+
+    def _fraction(self) -> float:
+        span = max(self.maximum() - self.minimum(), 1)
+        return (self.value() - self.minimum()) / span
+
+    def _value_from_x(self, x: float) -> int:
+        left = self.HANDLE_RADIUS
+        right = self.width() - self.HANDLE_RADIUS
+        span = max(right - left, 1)
+        fraction = min(max((x - left) / span, 0.0), 1.0)
+        return round(self.minimum() + fraction * (self.maximum() - self.minimum()))
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+
+        track = QRectF(
+            self.HANDLE_RADIUS, self.height() / 2 - self.TRACK_HEIGHT / 2,
+            self.width() - 2 * self.HANDLE_RADIUS, self.TRACK_HEIGHT,
+        )
+        radius = self.TRACK_HEIGHT / 2
+
+        painter.setBrush(QColor(SURFACE_2))
+        painter.drawRoundedRect(track, radius, radius)
+
+        fraction = self._fraction()
+        handle_x = track.left() + fraction * track.width()
+        if fraction > 0:
+            filled = QRectF(track.left(), track.top(), handle_x - track.left(), self.TRACK_HEIGHT)
+            painter.setBrush(QColor(ACCENT if self.isEnabled() else TEXT_MUTED))
+            painter.drawRoundedRect(filled, radius, radius)
+
+        handle_color = ACCENT_HOVER if self.isEnabled() else TEXT_MUTED
+        painter.setBrush(QColor("#ffffff" if self.isEnabled() else TEXT_MUTED))
+        painter.drawEllipse(QPointF(handle_x, self.height() / 2), self.HANDLE_RADIUS, self.HANDLE_RADIUS)
+        painter.end()
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self.isEnabled():
+            self.setValue(self._value_from_x(event.position().x()))
+            self.sliderPressed.emit()
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:
+        if event.buttons() & Qt.MouseButton.LeftButton and self.isEnabled():
+            self.setValue(self._value_from_x(event.position().x()))
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.sliderReleased.emit()
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
 
 class PlayerBar(QFrame):
     play_clicked = Signal()
@@ -44,7 +110,7 @@ class PlayerBar(QFrame):
         super().__init__(parent)
         self.setObjectName("playbar")
 
-        self._timeline = QSlider(Qt.Orientation.Horizontal)
+        self._timeline = _Slider(Qt.Orientation.Horizontal)
         self._timeline.setRange(0, TIMELINE_STEPS)
         self._timeline.sliderPressed.connect(self.scrub_started.emit)
         self._timeline.valueChanged.connect(
@@ -55,14 +121,14 @@ class PlayerBar(QFrame):
             icon(PLAY), "Reproduzir / pausar", self.play_clicked.emit, PLAY_BUTTON_SIZE, name="play",
         )
         self._transport = [
-            self._make_button(icon(SKIP_BACK), "Ir para o início", self.start_clicked.emit, TRANSPORT_BUTTON_SIZE),
-            self._make_button(icon(REWIND), "Retroceder", lambda: self.step_clicked.emit(-1), TRANSPORT_BUTTON_SIZE),
+            self._make_button(icon(SKIP_BACK), "Ir para o início", self.start_clicked.emit, TRANSPORT_BUTTON_SIZE, name="transport"),
+            self._make_button(icon(REWIND), "Retroceder", lambda: self.step_clicked.emit(-1), TRANSPORT_BUTTON_SIZE, name="transport"),
             self._play_button,
-            self._make_button(icon(FAST_FORWARD), "Avançar", lambda: self.step_clicked.emit(1), TRANSPORT_BUTTON_SIZE),
-            self._make_button(icon(SKIP_FORWARD), "Ir para o fim", self.end_clicked.emit, TRANSPORT_BUTTON_SIZE),
+            self._make_button(icon(FAST_FORWARD), "Avançar", lambda: self.step_clicked.emit(1), TRANSPORT_BUTTON_SIZE, name="transport"),
+            self._make_button(icon(SKIP_FORWARD), "Ir para o fim", self.end_clicked.emit, TRANSPORT_BUTTON_SIZE, name="transport"),
         ]
 
-        self._speed_slider = QSlider(Qt.Orientation.Horizontal)
+        self._speed_slider = _Slider(Qt.Orientation.Horizontal)
         self._speed_slider.setRange(
             round(SPEED_MIN * SPEED_SLIDER_SCALE), round(SPEED_MAX * SPEED_SLIDER_SCALE),
         )
