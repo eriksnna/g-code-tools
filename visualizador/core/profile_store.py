@@ -28,6 +28,10 @@ def load_profiles() -> tuple[list[MachineProfile], str | None]:
                 },
                 mode_key=str(item.get("mode", config.DEFAULT_MODE)),
                 dialect_key=str(item.get("dialect", config.DEFAULT_DIALECT)),
+                rapid_feed=float(item.get("rapid_feed", config.RAPID_FEED)),
+                default_feed=float(item.get("default_feed", config.DEFAULT_FEED)),
+                min_feed=float(item.get("min_feed", config.MIN_FEED)),
+                arc_step_deg=float(item.get("arc_step_deg", config.ARC_STEP_DEG)),
             )
             for item in data["profiles"]
         ]
@@ -48,6 +52,10 @@ def save_profiles(profiles: list[MachineProfile], active_name: str) -> None:
                 "limits": {axis: list(bounds) for axis, bounds in p.limits.items()},
                 "mode": p.mode_key,
                 "dialect": p.dialect_key,
+                "rapid_feed": p.rapid_feed,
+                "default_feed": p.default_feed,
+                "min_feed": p.min_feed,
+                "arc_step_deg": p.arc_step_deg,
             }
             for p in profiles
         ],

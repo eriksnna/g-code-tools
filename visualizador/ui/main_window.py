@@ -417,7 +417,10 @@ class MainWindow(QMainWindow):
         mode = self._mode_controls.current_mode()
         dialect = get_dialect(self._profile.dialect_key)
         limits = self._profile.limits
-        result = parse_gcode(self._text, dialect=dialect, limits=limits)
+        result = parse_gcode(
+            self._text, default_feed=self._profile.default_feed,
+            dialect=dialect, limits=limits, arc_step_deg=self._profile.arc_step_deg,
+        )
         moves = apply_mode(result.moves, mode)
 
         self._source_lines = self._text.splitlines()
@@ -429,7 +432,7 @@ class MainWindow(QMainWindow):
             self._show_empty()
             return
 
-        toolpath = Toolpath(moves)
+        toolpath = Toolpath(moves, rapid_feed=self._profile.rapid_feed, min_feed=self._profile.min_feed)
         levels = depth_levels(toolpath)
         self._toolpath = toolpath
         self._layer_controls.set_levels(levels)

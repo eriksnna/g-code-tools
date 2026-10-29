@@ -57,14 +57,14 @@ class _ProfilesPage(QWidget):
 
         layout = QVBoxLayout(self)
 
-        self._profile_list = QListWidget()
+        self._profile_combo = QComboBox()
         for profile in self._profiles:
-            self._profile_list.addItem(profile.name)
+            self._profile_combo.addItem(profile.name)
         start_row = self._profiles.index(self._active) if self._active in self._profiles else 0
-        self._profile_list.setCurrentRow(start_row)
-        self._profile_list.currentRowChanged.connect(self._on_profile_selected)
+        self._profile_combo.setCurrentIndex(start_row)
+        self._profile_combo.currentIndexChanged.connect(self._on_profile_selected)
         layout.addWidget(QLabel("Perfil de máquina:"))
-        layout.addWidget(self._profile_list)
+        layout.addWidget(self._profile_combo)
 
         profile_buttons = QHBoxLayout()
         add_button = QPushButton("Salvar como novo perfil...")
@@ -108,7 +108,41 @@ class _ProfilesPage(QWidget):
             row.addWidget(hi)
             limits_form.addRow(f"{axis}:", row)
             self._spinboxes[axis] = (lo, hi)
+
         layout.addWidget(limits_box)
+
+        advanced_box = QGroupBox("Avançado")
+        advanced_form = QFormLayout(advanced_box)
+
+        self._rapid_feed_spin = QDoubleSpinBox()
+        self._rapid_feed_spin.setRange(1.0, 100_000.0)
+        self._rapid_feed_spin.setDecimals(1)
+        self._rapid_feed_spin.setSuffix(" mm/min")
+        self._rapid_feed_spin.valueChanged.connect(self._on_fields_edited)
+        advanced_form.addRow("Avanço rápido:", self._rapid_feed_spin)
+
+        self._default_feed_spin = QDoubleSpinBox()
+        self._default_feed_spin.setRange(1.0, 100_000.0)
+        self._default_feed_spin.setDecimals(1)
+        self._default_feed_spin.setSuffix(" mm/min")
+        self._default_feed_spin.valueChanged.connect(self._on_fields_edited)
+        advanced_form.addRow("Avanço padrão:", self._default_feed_spin)
+
+        self._min_feed_spin = QDoubleSpinBox()
+        self._min_feed_spin.setRange(0.1, 10_000.0)
+        self._min_feed_spin.setDecimals(2)
+        self._min_feed_spin.setSuffix(" mm/min")
+        self._min_feed_spin.valueChanged.connect(self._on_fields_edited)
+        advanced_form.addRow("Avanço mínimo:", self._min_feed_spin)
+
+        self._arc_step_spin = QDoubleSpinBox()
+        self._arc_step_spin.setRange(0.1, 45.0)
+        self._arc_step_spin.setDecimals(1)
+        self._arc_step_spin.setSuffix("°")
+        self._arc_step_spin.valueChanged.connect(self._on_fields_edited)
+        advanced_form.addRow("Resolução de arco:", self._arc_step_spin)
+
+        layout.addWidget(advanced_box)
         layout.addStretch(1)
 
         self._load_active_into_fields()
@@ -136,6 +170,10 @@ class _ProfilesPage(QWidget):
             lo_value, hi_value = self._active.limits[axis]
             lo.setValue(lo_value)
             hi.setValue(hi_value)
+        self._rapid_feed_spin.setValue(self._active.rapid_feed)
+        self._default_feed_spin.setValue(self._active.default_feed)
+        self._min_feed_spin.setValue(self._active.min_feed)
+        self._arc_step_spin.setValue(self._active.arc_step_deg)
         self._loading = False
 
     def _on_fields_edited(self) -> None:
@@ -145,6 +183,10 @@ class _ProfilesPage(QWidget):
         self._active.dialect_key = self._dialect_combo.currentData()
         for axis, (lo, hi) in self._spinboxes.items():
             self._active.limits[axis] = (lo.value(), hi.value())
+        self._active.rapid_feed = self._rapid_feed_spin.value()
+        self._active.default_feed = self._default_feed_spin.value()
+        self._active.min_feed = self._min_feed_spin.value()
+        self._active.arc_step_deg = self._arc_step_spin.value()
         self.changed.emit()
 
     def _add_profile(self) -> None:
@@ -158,14 +200,14 @@ class _ProfilesPage(QWidget):
         profile = self._active.clone()
         profile.name = name
         self._profiles.append(profile)
-        self._profile_list.addItem(profile.name)
-        self._profile_list.setCurrentRow(self._profile_list.count() - 1)
+        self._profile_combo.addItem(profile.name)
+        self._profile_combo.setCurrentIndex(self._profile_combo.count() - 1)
 
     def _remove_profile(self) -> None:
         if len(self._profiles) <= 1:
             QMessageBox.information(self, "Não é possível remover", "É preciso manter ao menos um perfil.")
             return
-        row = self._profile_list.currentRow()
+        row = self._profile_combo.currentIndex()
         if row < 0:
             return
         answer = QMessageBox.question(
@@ -177,8 +219,8 @@ class _ProfilesPage(QWidget):
         if answer != QMessageBox.StandardButton.Yes:
             return
         del self._profiles[row]
-        self._profile_list.takeItem(row)
-        self._profile_list.setCurrentRow(0)
+        self._profile_combo.removeItem(row)
+        self._profile_combo.setCurrentIndex(0)
 
 
 class _ShortcutsPage(QWidget):

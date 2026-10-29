@@ -63,12 +63,13 @@ class ParseResult:
 
 def parse_gcode(text: str, default_feed: float = DEFAULT_FEED,
                 limits: Limits = MACHINE_LIMITS,
-                dialect: Dialect | None = None) -> ParseResult:
+                dialect: Dialect | None = None,
+                arc_step_deg: float = ARC_STEP_DEG) -> ParseResult:
     """Expande o programa e interpreta a sequência resultante."""
     dialect = dialect or get_dialect(DEFAULT_DIALECT)
     expansion = expand_program(text)
 
-    interpreter = GCodeInterpreter(default_feed, limits, dialect)
+    interpreter = GCodeInterpreter(default_feed, limits, dialect, arc_step_deg)
     for source in expansion.lines:
         interpreter.run_line(source.text, source.line)
 
@@ -114,7 +115,7 @@ class GCodeInterpreter:
     """Mantém o estado modal da máquina enquanto percorre as linhas expandidas."""
 
     def __init__(self, default_feed: float, limits: Limits = MACHINE_LIMITS,
-                 dialect: Dialect | None = None) -> None:
+                 dialect: Dialect | None = None, arc_step_deg: float = ARC_STEP_DEG) -> None:
         self.position: Point = (0.0, 0.0, 0.0)
         self.absolute = True
         self.unit_scale = 1.0
@@ -122,6 +123,7 @@ class GCodeInterpreter:
         self.feed = default_feed
         self.limits = limits
         self.dialect = dialect or get_dialect(DEFAULT_DIALECT)
+        self.arc_step_deg = arc_step_deg
         self.process_active = False
         self.moves: list[Move] = []
         self.issues: list[Issue] = []
@@ -244,7 +246,7 @@ class GCodeInterpreter:
             start[0] + words.get("I", 0.0) * self.unit_scale,
             start[1] + words.get("J", 0.0) * self.unit_scale,
         )
-        points = arc_points(start, end, center, clockwise=self.motion == G_CW_ARC)
+        points = arc_points(start, end, center, clockwise=self.motion == G_CW_ARC, step_deg=self.arc_step_deg)
         self._check_bounds(points)
 
         previous = start

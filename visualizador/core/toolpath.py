@@ -40,7 +40,8 @@ class Snapshot:
 class Toolpath:
     """Movimentos com duração calculada e acumulada, prontos para consulta por tempo."""
 
-    def __init__(self, moves: Sequence[Move], rapid_feed: float = RAPID_FEED) -> None:
+    def __init__(self, moves: Sequence[Move], rapid_feed: float = RAPID_FEED,
+                 min_feed: float = MIN_FEED) -> None:
         if not moves:
             raise ValueError("O caminho precisa de pelo menos um movimento.")
 
@@ -55,7 +56,7 @@ class Toolpath:
         self.lines = np.array([m.line for m in moves], dtype=int)
 
         feeds = np.array([rapid_feed if m.rapid else m.feed for m in moves], dtype=float)
-        feeds = np.maximum(feeds, MIN_FEED)
+        feeds = np.maximum(feeds, min_feed)
         lengths = np.array([m.length for m in moves], dtype=float)
         travel = lengths / feeds * SECONDS_PER_MINUTE
 

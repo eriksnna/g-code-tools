@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from config import DEFAULT_DIALECT, DEFAULT_MODE
+from config import (
+    ARC_STEP_DEG, DEFAULT_DIALECT, DEFAULT_FEED, DEFAULT_MODE, MIN_FEED, RAPID_FEED,
+)
 
 Limits = dict[str, tuple[float, float]]
 
 DEFAULT_LIMITS: Limits = {"X": (0.0, 300.0), "Y": (0.0, 200.0), "Z": (-100.0, 100.0)}
-
 
 @dataclass
 class MachineProfile:
@@ -21,9 +22,16 @@ class MachineProfile:
     limits: Limits = field(default_factory=lambda: dict(DEFAULT_LIMITS))
     mode_key: str = DEFAULT_MODE
     dialect_key: str = DEFAULT_DIALECT
+    rapid_feed: float = RAPID_FEED
+    default_feed: float = DEFAULT_FEED
+    min_feed: float = MIN_FEED
+    arc_step_deg: float = ARC_STEP_DEG
 
     def clone(self) -> "MachineProfile":
-        return MachineProfile(self.name, dict(self.limits), self.mode_key, self.dialect_key)
+        return MachineProfile(
+            self.name, dict(self.limits), self.mode_key, self.dialect_key,
+            self.rapid_feed, self.default_feed, self.min_feed, self.arc_step_deg,
+        )
 
 
 def default_profiles() -> list[MachineProfile]:
