@@ -1,3 +1,5 @@
+# libraries used
+
 numpy
 PySide6
 pyqtgraph

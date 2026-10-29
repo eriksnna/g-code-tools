@@ -2,10 +2,10 @@
 from pathlib import Path
 import os
 
-CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home() / ".config"))) / "GCodeTools"
+CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home() / ".config"))) / "GPath"
 PROFILES_FILE = CONFIG_DIR / "profiles.json"
 
-APP_TITLE = "Visualizador de G-Code 3D"
+APP_TITLE = "G-Path"
 WINDOW_SIZE = (1100, 800)
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 ICON_PATH = ASSETS_DIR / "g-code.ico"

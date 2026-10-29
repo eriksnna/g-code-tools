@@ -9,8 +9,8 @@ from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QVBoxLayout
 
 from ui.theme import ACCENT, SURFACE_0, SURFACE_1
 
-TITLE = "Visualizador de G-Code"
-SUBTITLE = "Abra um programa existente ou escreva um novo no editor."
+TITLE = "G-Path"
+SUBTITLE = "Ferramenta de visualização e simulação 3D de programas G-code."
 
 CONTENT_WIDTH = 360
 BUTTON_WIDTH = 280
@@ -107,6 +107,10 @@ class StartPanel(QFrame):
         blank_button.setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT)
         blank_button.clicked.connect(self.blank_requested.emit)
 
+        footer = QLabel("erik senna ©2026")
+        footer.setObjectName("startFooter")
+        footer.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+
         content_layout = QVBoxLayout()
         content_layout.setSpacing(14)
         content_layout.addWidget(title)
@@ -122,10 +126,11 @@ class StartPanel(QFrame):
         content.setLayout(content_layout)
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setContentsMargins(0, 0, 0, 16)
         outer.addStretch()
         outer.addWidget(content, 0, Qt.AlignmentFlag.AlignHCenter)
         outer.addStretch()
+        outer.addWidget(footer, 0, Qt.AlignmentFlag.AlignHCenter)
 
         self._background.lower()
 

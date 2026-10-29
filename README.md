@@ -1,8 +1,8 @@
-## G-Code Tools
+## G-Path
 
 ### Sobre
 
-Modernização e acessibilidade em sistemas CNC utilizados para impressão 3D de componentes metálicos: desenvolvimento de ferramenta de parsing, simulação e leitura de G-Code.
+Ferramenta de visualização e simulação 3D de programas G-code.
 
 ### Instalação e uso
 
@@ -411,9 +411,19 @@ Novidades:
 - Agora é possivel acessar as opções Arquivo, Editar e Ajustes;
 - Permanência de perfil com Modo, Dialeto e Limites
 
-### 26/10 — segunda-feira a 29/10 — quinta-feira - Adições extras e ajustes gerais (~20h)
+### 26/10 — segunda-feira a 29/10 — quinta-feira - Adições extras e ajustes gerais (~30h)
 
-1. **Aparência:**
+1. **Identidade:**
+
+- Agora o programa se chama G-Path: Ferramenta de visualização e simulação 3D de programas G-code;
+- Futura logo em desenvolvimento
+
+2. **Aparência:**
 
 - Novos ícones;
-- Página inicial repaginada;
+- Página inicial repaginada
+
+3. **Funcionamento:** 
+
+- Remoção de código morto (não utilizado);
+- Correção de bugs

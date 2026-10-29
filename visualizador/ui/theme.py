@@ -1,11 +1,3 @@
-"""Cores e folha de estilo. Trocar o visual é feito apenas aqui.
-
-Paleta inspirada no modo escuro da Apple (macOS/iOS): camadas de cinza em vez
-de bordas marcadas, azul vívido de destaque, cantos bem arredondados. Os
-tokens abaixo (SURFACE_*, ACCENT, RADIUS_*) centralizam cor/forma — mude só
-aqui pra afetar o app inteiro.
-"""
-
 # --- tokens de design ---------------------------------------------------
 
 SURFACE_0 = "#0d0e12"   # fundo da janela
@@ -34,7 +26,7 @@ RADIUS_LG = "12px"
 
 FONT_FAMILY = "'Segoe UI Variable Display', 'Segoe UI', sans-serif"
 
-# --- cores usadas no viewport 3D (OpenGL, não QSS) -----------------------
+# --- cores usadas no viewport 3D (OpenGL, sem QSS) -----------------------
 
 BACKGROUND = SURFACE_0
 GRID_COLOR = (70, 75, 85, 255)
@@ -179,6 +171,7 @@ QLabel#findStatus {{ color: {WARNING_COLOR}; font-size: 11px; }}
 QFrame#startPanel {{ background: {SURFACE_0}; }}
 QLabel#startTitle {{ color: {TEXT_PRIMARY}; font-size: 24px; font-weight: 700; }}
 QLabel#startSubtitle {{ color: {TEXT_SECONDARY}; font-size: 13px; }}
+QLabel#startFooter {{ color: {TEXT_MUTED}; font-size: 11px; }}
 
 QPushButton#startButton {{
     background: {ACCENT}; padding: 8px 20px; font-size: 13px; font-weight: 600;

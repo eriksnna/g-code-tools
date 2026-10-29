@@ -1,4 +1,4 @@
-"""Ponto de entrada do visualizador de G-code."""
+"""Ponto de entrada do G-Path"""
 import sys
 
 from PySide6.QtWidgets import QApplication
