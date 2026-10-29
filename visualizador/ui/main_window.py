@@ -85,6 +85,7 @@ class MainWindow(QMainWindow):
 
         self._build_layout()
         self._build_menu_bar()
+        self.menuBar().setVisible(False)
         self._connect_signals()
         self._player.set_speed(self._playback.speed)
         self._player.set_enabled(False)
@@ -97,8 +98,8 @@ class MainWindow(QMainWindow):
         central = QWidget()
         central.setObjectName("central")
         root = QVBoxLayout(central)
-        root.setContentsMargins(12, 12, 12, 12)
-        root.setSpacing(10)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
 
         header = QHBoxLayout()
         header.setSpacing(10)
@@ -135,18 +136,24 @@ class MainWindow(QMainWindow):
         body.setSizes([760, 320])
         body.setChildrenCollapsible(False)
 
-        self._stack.addWidget(self._start_panel)
-        self._stack.addWidget(body)
-        self._stack.setCurrentWidget(self._start_panel)
-
         self._header_widget = QWidget()
         self._header_widget.setLayout(header)
         self._header_widget.setVisible(False)
         self._player.setVisible(False)
 
-        root.addWidget(self._header_widget)
+        workspace = QWidget()
+        workspace_layout = QVBoxLayout(workspace)
+        workspace_layout.setContentsMargins(12, 12, 12, 12)
+        workspace_layout.setSpacing(10)
+        workspace_layout.addWidget(self._header_widget)
+        workspace_layout.addWidget(body, 1)
+        workspace_layout.addWidget(self._player)
+
+        self._stack.addWidget(self._start_panel)
+        self._stack.addWidget(workspace)
+        self._stack.setCurrentWidget(self._start_panel)
+
         root.addWidget(self._stack, 1)
-        root.addWidget(self._player)
         self.setCentralWidget(central)
 
     def _build_menu_bar(self) -> None:
@@ -229,12 +236,14 @@ class MainWindow(QMainWindow):
         self._show_empty()
         self._header_widget.setVisible(False)
         self._player.setVisible(False)
+        self.menuBar().setVisible(False)
         self._stack.setCurrentIndex(0)
 
     def _enter_workspace(self) -> None:
         """Sai da tela inicial: mostra cabeçalho, área de trabalho e barra de reprodução."""
         self._header_widget.setVisible(True)
         self._player.setVisible(True)
+        self.menuBar().setVisible(True)
         self._stack.setCurrentIndex(1)
 
     def _restore_window_state(self) -> None:

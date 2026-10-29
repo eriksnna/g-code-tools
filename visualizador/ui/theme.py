@@ -180,12 +180,13 @@ QLabel#findStatus {{ color: {WARNING_COLOR}; font-size: 11px; }}
 QFrame#startPanel {{ background: {SURFACE_0}; }}
 QLabel#startTitle {{ color: {TEXT_PRIMARY}; font-size: 24px; font-weight: 700; }}
 QLabel#startSubtitle {{ color: {TEXT_SECONDARY}; font-size: 13px; }}
+
 QPushButton#startButton {{
-    background: {ACCENT}; padding: 12px 20px; font-size: 13px; font-weight: 600;
+    background: {ACCENT}; padding: 8px 20px; font-size: 13px; font-weight: 600;
     border-radius: {RADIUS_MD};
 }}
 QPushButton#startButton:hover {{ background: {ACCENT_HOVER}; }}
-QPushButton#startButtonSecondary {{ padding: 12px 20px; font-size: 13px; border-radius: {RADIUS_MD}; }}
+QPushButton#startButtonSecondary {{ padding: 8px 20px; font-size: 13px; border-radius: {RADIUS_MD}; }}
 
 QScrollBar:vertical {{
     background: transparent; width: 10px; margin: 0;
