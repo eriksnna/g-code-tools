@@ -1,14 +1,21 @@
 """Constantes de configuração. Ajustes de máquina e de aparência ficam aqui."""
+
 from pathlib import Path
-import os
+import os, sys
 
 CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home() / ".config"))) / "GPath"
 PROFILES_FILE = CONFIG_DIR / "profiles.json"
 
 APP_TITLE = "G-Path"
 WINDOW_SIZE = (1100, 800)
-ASSETS_DIR = Path(__file__).resolve().parent / "assets"
+
+if getattr(sys, "frozen", False):
+       BASE_DIR = Path(sys._MEIPASS)
+else:
+       BASE_DIR = Path(__file__).resolve().parent
+ASSETS_DIR = BASE_DIR / "assets"
 ICON_PATH = ASSETS_DIR / "g-code.ico"
+
 GCODE_FILTER = "G-code (*.nc *.gcode *.ngc *.tap);;Todos os arquivos (*)"
 
 # Máquina e interpretação
